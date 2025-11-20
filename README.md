@@ -30,10 +30,12 @@
 ### 음원 파일 (공용 - 로그인한 모든 유저 접근 가능)
 - ✅ 음원 목록 조회
 - ✅ 음원 정보 조회
-- ✅ **음원 스트리밍** (Range Request 지원 - 부분 다운로드 가능)
+- ✅ **음원 업로드** (AAC, M4A, MP3, WAV 지원)
+- ✅ **음원 스트리밍** (S3: Presigned URL / 로컬: Range Request)
 - ✅ 음원 검색 (제목, 아티스트)
 - ✅ 포맷: **AAC (.m4a)** - 압축률 우수, 스트리밍 최적화
 - ✅ **보안**: JWT 인증 필요 (로그인한 유저만 접근 가능)
+- ✅ **스토리지**: AWS S3 (프로덕션) / 로컬 (개발) 환경별 분기
 
 ### 3D 모델 파일 (개인 - JWT 인증 필요)
 - ✅ 내 모델 목록 조회
@@ -102,9 +104,15 @@ npm install
 
 `.env` 파일을 생성하고 다음 내용을 입력합니다:
 
+### 개발 환경 (로컬 스토리지)
+
 ```env
 # Server Configuration
 PORT=3001
+
+# Storage Configuration
+STORAGE_TYPE=local
+FILE_SERVER_PATH=./files
 
 # Database Configuration (login-server와 동일해야 함)
 DB_HOST=localhost
@@ -115,12 +123,37 @@ DB_NAME=logindb
 
 # JWT Secret (login-server와 반드시 동일해야 함!!!)
 JWT_SECRET=your-strong-secret-key
-
-# File Server Path (음원/모델 파일이 저장된 경로)
-FILE_SERVER_PATH=./files
 ```
 
-**⚠️ 중요**: `JWT_SECRET`과 DB 설정은 **반드시 login-server와 동일**해야 합니다!
+### 프로덕션 환경 (AWS S3)
+
+```env
+# Server Configuration
+PORT=3001
+
+# Storage Configuration
+STORAGE_TYPE=s3
+S3_BUCKET=your-bucket-name
+
+# AWS Credentials
+AWS_REGION=ap-northeast-2
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your_actual_password
+DB_NAME=logindb
+
+# JWT Secret
+JWT_SECRET=your-strong-secret-key
+```
+
+**⚠️ 중요**:
+- `JWT_SECRET`과 DB 설정은 **반드시 login-server와 동일**해야 합니다!
+- AWS S3 설정은 [docs/AWS_S3_SETUP.md](docs/AWS_S3_SETUP.md)를 참고하세요.
 
 ---
 
@@ -216,24 +249,76 @@ Authorization: Bearer <your_token>
 GET /api/audio/:id
 ```
 
-#### 3. 음원 스트리밍 (Range Request 지원)
+#### 3. 음원 스트리밍
 ```http
 GET /api/audio/stream/:id
 ```
 
-**특징:**
+**S3 환경 응답 (Presigned URL):**
+```json
+{
+  "success": true,
+  "stream_url": "https://bucket.s3.amazonaws.com/audio/file.aac?X-Amz-Signature=...",
+  "audio_file": {
+    "id": 1,
+    "title": "Sample Track",
+    "format": "aac",
+    "file_size": 3145728
+  },
+  "expires_in": 3600
+}
+```
+
+**로컬 환경:**
 - HTTP Range Request 지원 (부분 다운로드)
-- 언리얼 엔진 미디어 플레이어와 호환
-- 모바일 브라우저 스트리밍 지원
+- 직접 바이너리 스트리밍
 
 **예제 (언리얼 엔진):**
 ```cpp
-// Media Player에서 사용
+// S3 환경: Presigned URL로 직접 재생
+FString StreamURL = PresignedUrlFromAPI;
+MediaPlayer->OpenUrl(StreamURL);
+
+// 로컬 환경: 서버 URL로 재생
 FString StreamURL = TEXT("http://localhost:3001/api/audio/stream/1");
 MediaPlayer->OpenUrl(StreamURL);
 ```
 
-#### 4. 음원 검색
+#### 4. 음원 업로드
+```http
+POST /api/audio/upload
+Authorization: Bearer <your_token>
+Content-Type: multipart/form-data
+
+audio: <file>
+title: "Song Title"
+artist: "Artist Name" (optional)
+duration: 180 (optional, seconds)
+```
+
+**응답:**
+```json
+{
+  "success": true,
+  "message": "Audio file uploaded successfully",
+  "audio_file": {
+    "id": 1,
+    "title": "Song Title",
+    "artist": "Artist Name",
+    "file_path": "audio/1234567890.aac",
+    "file_size": 3145728,
+    "duration": 180,
+    "format": "aac",
+    "created_at": "2024-01-01T00:00:00.000Z"
+  }
+}
+```
+
+**제한사항:**
+- 최대 파일 크기: 100MB
+- 지원 포맷: AAC, M4A, MP3, WAV
+
+#### 5. 음원 검색
 ```http
 GET /api/audio/search/:query
 ```
@@ -397,7 +482,10 @@ mve-resource-server/
 - **jsonwebtoken** - JWT 토큰 검증
 - **dotenv** - 환경 변수 관리
 - **cors** - CORS 처리
-- **fs** - 파일 스트리밍
+- **multer** - 파일 업로드 처리
+- **@aws-sdk/client-s3** - AWS S3 연동
+- **@aws-sdk/s3-request-presigner** - Presigned URL 생성
+- **multer-s3** - S3 직접 업로드
 
 ---
 
@@ -426,9 +514,10 @@ ffmpeg -i input.wav -c:a aac -b:a 192k output.m4a
 
 1. **음원 파일**: 공용 리소스이지만 JWT 인증 필요 (로그인한 유저만 접근 가능)
 2. **모델 파일**: 개인 소유, JWT 검증 + 소유권 확인 (자신의 모델만 접근)
-3. **파일 경로만 저장**: 실제 파일은 FILE_SERVER_PATH에 저장
+3. **S3 Presigned URL**: 서명 포함 + 1시간 만료 (URL 공유되어도 만료 후 접근 불가)
 4. **SQL Injection 방지**: Prepared Statements 사용
 5. **JWT_SECRET 공유**: login-server와 동일한 키 사용 필수
+6. **파일 업로드 검증**: MIME 타입 + 확장자 검사, 100MB 크기 제한
 
 ---
 
