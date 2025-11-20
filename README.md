@@ -401,6 +401,14 @@ Authorization: Bearer <your_token>
 
 ## 빠른 시작
 
+### 웹 UI 테스트
+
+브라우저에서 `public/api_test.html`을 열어 간편하게 API를 테스트할 수 있습니다.
+
+```
+http://localhost:3001/api_test.html
+```
+
 ### PowerShell 예제
 
 ```powershell
