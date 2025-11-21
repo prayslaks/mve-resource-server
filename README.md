@@ -4,7 +4,7 @@
 
 음원 파일 스트리밍 및 사용자별 3D 모델 파일 경로를 관리하는 Node.js API 서버입니다.
 
-> **참고**: 이 서버는 파일 경로만 저장하며, 실제 파일은 별도의 파일 서버에 저장됩니다. 인증은 [mve-login-server](../mve-login-server)에서 발급한 JWT 토큰을 사용합니다.
+> **참고**: 이 서버는 파일 경로만 저장하며, 실제 파일은 별도의 파일 서버에 저장됩니다. 인증은 [mve-login-server](https://github.com/prayslaks/mve-login-server)에서 발급한 JWT 토큰을 사용합니다.
 
 **⚠️ 주의**: Claude Code 바이브 코딩으로 개발했으므로, 함부로 실제 서비스에 사용하다 보안 문제가 발생해도 책임지지 않습니다.
 
@@ -163,7 +163,7 @@ JWT_SECRET=your-strong-secret-key
 
 ### 1. login-server 데이터베이스가 이미 설정되어 있어야 함
 
-먼저 [mve-login-server](../mve-login-server)의 데이터베이스 설정을 완료해야 합니다.
+먼저 [mve-login-server](https://github.com/prayslaks/mve-login-server)의 데이터베이스 설정을 완료해야 합니다.
 
 ### 2. 리소스 테이블 추가
 
@@ -598,6 +598,15 @@ ffmpeg -i input.wav -c:a aac -b:a 192k output.m4a
 4. **SQL Injection 방지**: Prepared Statements 사용
 5. **JWT_SECRET 공유**: login-server와 동일한 키 사용 필수
 6. **파일 업로드 검증**: MIME 타입 + 확장자 검사, 100MB 크기 제한
+
+---
+
+## 문서
+
+- **[API_RESPONSES.md](docs/API_RESPONSES.md)** - API 응답 형식 및 전체 오류 코드 목록
+- **[API_TEST.md](docs/API_TEST.md)** - 상세한 API 테스트 방법 및 예제
+- **[ENV_SETUP.md](docs/ENV_SETUP.md)** - 환경 변수 설정
+- **[AWS_S3_SETUP.md](docs/AWS_S3_SETUP.md)** - AWS S3 설정
 
 ---
 
