@@ -210,6 +210,78 @@ pm2 save
 pm2 status
 ```
 
+### Nginx 리버스 프록시 설정
+
+두 서버를 하나의 도메인으로 서비스하려면 nginx 설정이 필요합니다.
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;  # EC2 도메인 또는 퍼블릭 IP
+
+    # 리소스 서버 API (audio, models)
+    location /api/audio {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /api/models {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # 로그인 서버 API (기본)
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+**적용 방법:**
+```bash
+sudo nano /etc/nginx/sites-enabled/default
+# 위 내용으로 수정 후
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+> **⚠️ 주의**: `/api/audio`와 `/api/models` 경로를 먼저 정의해야 합니다. nginx는 위에서 아래로 매칭하므로, `/` 경로가 먼저 있으면 모든 요청이 로그인 서버(3000)로 전달됩니다.
+
+### AWS EC2 보안 그룹 설정
+
+EC2 인스턴스의 인바운드 규칙 예시:
+
+| 유형 | 프로토콜 | 포트 | 소스 | 설명 |
+|------|----------|------|------|------|
+| HTTPS | TCP | 443 | 0.0.0.0/0 | 프로덕션 서비스 (SSL) |
+| HTTP | TCP | 80 | 0.0.0.0/0 | 프로덕션 서비스 |
+| SSH | TCP | 22 | 내 IP | 서버 관리용 |
+| Custom TCP | TCP | 3000 | 내 IP | 개발용 로그인 서버 직접 접근 |
+| Custom TCP | TCP | 3001 | 내 IP | 개발용 리소스 서버 직접 접근 |
+
+> **⚠️ 보안 주의사항**:
+> - SSH(22)는 반드시 특정 IP만 허용
+> - 3000, 3001 포트는 개발 시에만 열고, 프로덕션에서는 nginx(80/443)를 통해서만 접근
+> - 프로덕션 환경에서는 HTTP(80)를 HTTPS(443)로 리다이렉트 권장
+
 ---
 
 ## API 엔드포인트

@@ -20,13 +20,20 @@ if (isS3Storage) {
     GetObjectCommand = GOC;
     getSignedUrl = gsu;
 
-    s3Client = new S3Client({
-        region: process.env.AWS_REGION || 'ap-northeast-2',
-        credentials: {
+    // EC2 IAM Role 사용 시 credentials 생략 (자동으로 메타데이터에서 가져옴)
+    // 환경변수에 AWS_ACCESS_KEY_ID가 있으면 명시적으로 사용
+    const s3Config = {
+        region: process.env.AWS_REGION || 'ap-northeast-2'
+    };
+
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+        s3Config.credentials = {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID,
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-        }
-    });
+        };
+    }
+
+    s3Client = new S3Client(s3Config);
 }
 
 // 파일 필터 (공통)

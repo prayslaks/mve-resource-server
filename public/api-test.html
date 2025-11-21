@@ -302,7 +302,7 @@
         function updateTokenDisplay() {
             const display = document.getElementById('currentToken');
             if (jwtToken) {
-                display.textContent = jwtToken.substring(0, 50) + '...';
+                display.textContent = jwtToken;
             } else {
                 display.textContent = 'No token';
             }
