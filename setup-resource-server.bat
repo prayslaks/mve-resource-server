@@ -1,6 +1,6 @@
 @echo off
+call npm install
 echo ========================================
-echo Start MVE resource server...
+echo MVE resource server Setup has been Completed.
 echo ========================================
-node server.js
-pause
+timeout \t 3

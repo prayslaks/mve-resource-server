@@ -151,6 +151,24 @@
                 <button class="btn-primary" onclick="getProfile()">Get Profile</button>
                 <div class="response" id="profileResponse"></div>
             </div>
+
+            <!-- Logout -->
+            <div class="api-group">
+                <h3>POST /api/auth/logout - Logout (JWT Required)</h3>
+                <button class="btn-warning" onclick="logout()">Logout</button>
+                <div class="response" id="logoutResponse"></div>
+            </div>
+
+            <!-- Withdraw -->
+            <div class="api-group">
+                <h3>DELETE /api/auth/withdraw - Delete Account (JWT Required)</h3>
+                <div class="input-group">
+                    <label>Password (현재 비밀번호 확인)</label>
+                    <input type="password" id="withdrawPassword" placeholder="current password">
+                </div>
+                <button class="btn-danger" onclick="withdraw()">Delete Account</button>
+                <div class="response" id="withdrawResponse"></div>
+            </div>
         </div>
 
         <!-- Resource Server APIs -->
@@ -176,7 +194,7 @@
                 <h3>GET /api/audio/:id - Get Audio Info (JWT Required)</h3>
                 <div class="input-group">
                     <label>Audio ID</label>
-                    <input type="number" id="audioId" placeholder="1">
+                    <input type="number" id="audioId" placeholder="Enter Audio ID">
                 </div>
                 <button class="btn-primary" onclick="getAudioInfo()">Get Audio Info</button>
                 <div class="response" id="audioInfoResponse"></div>
@@ -219,7 +237,7 @@
                 <h3>GET /api/audio/stream/:id - Stream Audio (JWT Required)</h3>
                 <div class="input-group">
                     <label>Audio ID</label>
-                    <input type="number" id="streamAudioId" placeholder="1">
+                    <input type="number" id="streamAudioId" placeholder="Enter Audio ID">
                 </div>
                 <button class="btn-secondary" onclick="streamAudio()">Get Stream URL</button>
                 <div class="response" id="streamAudioResponse"></div>
@@ -418,6 +436,43 @@
         async function getProfile() {
             const response = await apiCall(`${getLoginServerUrl()}/api/auth/profile`);
             displayResponse('profileResponse', response);
+        }
+
+        async function logout() {
+            const response = await apiCall(`${getLoginServerUrl()}/api/auth/logout`, {
+                method: 'POST'
+            });
+            displayResponse('logoutResponse', response);
+
+            if (response.data && response.data.success) {
+                jwtToken = '';
+                localStorage.removeItem('mve_jwt_token');
+                updateTokenDisplay();
+            }
+        }
+
+        async function withdraw() {
+            const password = document.getElementById('withdrawPassword').value;
+            if (!password) {
+                displayResponse('withdrawResponse', { error: 'Password is required' });
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+                return;
+            }
+
+            const response = await apiCall(`${getLoginServerUrl()}/api/auth/withdraw`, {
+                method: 'DELETE',
+                body: JSON.stringify({ password })
+            });
+            displayResponse('withdrawResponse', response);
+
+            if (response.data && response.data.success) {
+                jwtToken = '';
+                localStorage.removeItem('mve_jwt_token');
+                updateTokenDisplay();
+            }
         }
 
         // Resource Server APIs
