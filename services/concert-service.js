@@ -32,6 +32,9 @@ async function createConcert(roomId, concertData) {
   // 현재 재생 곡은 첫 번째 곡으로 설정 (없으면 null)
   concertData.currentSong = concertData.songs.length > 0 ? concertData.songs[0].songNum : null;
 
+  // 현재 관객 수 초기화
+  concertData.currentAudience = 0;
+
   // 콘서트 정보 저장 (2시간 TTL)
   await redisClient.setEx(key, 7200, JSON.stringify(concertData));
 
@@ -47,10 +50,10 @@ async function createConcert(roomId, concertData) {
 /**
  * 콘서트 참가
  * @param {string} roomId - 콘서트 방 ID
- * @param {number} userId - 사용자 ID
+ * @param {number} clientId - 참가한 클라이언트의 사용자 ID
  * @returns {Promise<object>} - { success: true }
  */
-async function joinConcert(roomId, userId) {
+async function joinConcert(roomId, clientId) {
   const sessionKey = `concert:room:${roomId}:info`;
   const sessionData = await redisClient.get(sessionKey);
 
@@ -65,13 +68,53 @@ async function joinConcert(roomId, userId) {
     throw new Error('Concert is not open for joining');
   }
 
+  // 최대 관객 수 확인
+  if (concertInfo.currentAudience >= concertInfo.maxAudience) {
+    throw new Error('Concert is full');
+  }
+
   // 참가자 목록에 추가 (set 자료구조 사용)
   const audienceKey = `concert:room:${roomId}:audience`;
-  await redisClient.sAdd(audienceKey, userId.toString());
+  const isNewMember = await redisClient.sAdd(audienceKey, clientId.toString());
+
+  // 이미 참가한 멤버가 아니라면 관객 수 증가
+  if (isNewMember) {
+    concertInfo.currentAudience += 1;
+  }
 
   // 참가자 목록도 2시간 TTL 설정
   await redisClient.expire(audienceKey, 7200);
 
+  // 업데이트된 정보 저장 (TTL 유지)
+  const ttl = await redisClient.ttl(sessionKey);
+  await redisClient.setEx(sessionKey, ttl > 0 ? ttl : 7200, JSON.stringify(concertInfo));
+
+  return { success: true };
+}
+
+/**
+ * 콘서트 퇴장
+ * @param {string} roomId - 콘서트 방 ID
+ * @param {number} clientId - 퇴장한 클라이언트의 사용자 ID
+ * @returns {Promise<object>} - { success: true }
+ */
+async function leaveConcert(roomId, clientId) {
+  const sessionKey = `concert:room:${roomId}:info`;
+  const audienceKey = `concert:room:${roomId}:audience`;
+
+  // 참가자 목록에서 제거
+  const wasMember = await redisClient.sRem(audienceKey, clientId.toString());
+
+  // 실제로 멤버였다면 관객 수 감소
+  if (wasMember) {
+    const sessionData = await redisClient.get(sessionKey);
+    if (sessionData) {
+      const concertInfo = JSON.parse(sessionData);
+      concertInfo.currentAudience = Math.max(0, concertInfo.currentAudience - 1); // 0 미만으로 내려가지 않도록
+      const ttl = await redisClient.ttl(sessionKey);
+      await redisClient.setEx(sessionKey, ttl > 0 ? ttl : 7200, JSON.stringify(concertInfo));
+    }
+  }
   return { success: true };
 }
 
@@ -106,7 +149,7 @@ async function getConcertInfo(roomId) {
  * 활성 콘서트 목록 조회 (최신 10개, 개방/비공개 모두 포함)
  * @returns {Promise<Array>} - 콘서트 목록 (isOpen 필드 포함)
  */
-async function getActiveConcerts() {
+async function getConcerts() {
   // Redis 5.x 호환: 전체 가져와서 역순 정렬
   const allRoomIds = await redisClient.zRange('sessions:active', 0, -1);
   const roomIds = allRoomIds.reverse();
@@ -114,10 +157,9 @@ async function getActiveConcerts() {
   const concerts = await Promise.all(
     roomIds.map(async (roomId) => {
       const infoKey = `concert:room:${roomId}:info`;
-      const audienceKey = `concert:room:${roomId}:audience`;
 
       const info = await redisClient.get(infoKey);
-      const audienceCount = await redisClient.sCard(audienceKey);
+      // const audienceCount = await redisClient.sCard(audienceKey); // 이제 info에 포함됨
 
       if (!info) {
         // 만료된 콘서트는 활성 목록에서 제거
@@ -130,8 +172,7 @@ async function getActiveConcerts() {
       // 비공개 콘서트도 목록에 포함 (클라이언트가 isOpen으로 구분)
       return {
         roomId,
-        ...concertInfo,
-        currentAudience: audienceCount
+        ...concertInfo
       };
     })
   );
@@ -295,6 +336,11 @@ async function addAccessory(roomId, accessoryData) {
 
   const concertInfo = JSON.parse(data);
 
+  // 콘서트가 공개된 상태에서는 액세서리 추가 불가
+  if (concertInfo.isOpen) {
+    throw new Error('Cannot add accessory while concert is open');
+  }
+
   // accessories 배열이 없으면 초기화
   if (!concertInfo.accessories) {
     concertInfo.accessories = [];
@@ -326,6 +372,11 @@ async function removeAccessory(roomId, index) {
 
   const concertInfo = JSON.parse(data);
 
+  // 콘서트가 공개된 상태에서는 액세서리 삭제 불가
+  if (concertInfo.isOpen) {
+    throw new Error('Cannot remove accessory while concert is open');
+  }
+
   if (!concertInfo.accessories || index >= concertInfo.accessories.length || index < 0) {
     throw new Error(`Invalid accessory index: ${index}`);
   }
@@ -355,6 +406,11 @@ async function updateAccessories(roomId, accessories) {
   }
 
   const concertInfo = JSON.parse(data);
+
+  // 콘서트가 공개된 상태에서는 액세서리 교체 불가
+  if (concertInfo.isOpen) {
+    throw new Error('Cannot update accessories while concert is open');
+  }
 
   // 액세서리 전체 교체
   concertInfo.accessories = accessories;
@@ -426,9 +482,10 @@ async function toggleConcertOpen(roomId, isOpen) {
 module.exports = {
   createConcert,
   joinConcert,
+  leaveConcert,
   verifyAccess,
   getConcertInfo,
-  getActiveConcerts,
+  getConcerts,
   addSong,
   removeSong,
   changeSong,

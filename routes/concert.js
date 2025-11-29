@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
 const {
+  leaveConcert,
   createConcert,
   joinConcert,
   verifyAccess,
   getConcertInfo,
-  getActiveConcerts,
+  getConcerts,
   addSong,
   removeSong,
   changeSong,
@@ -109,7 +110,7 @@ router.post('/create', verifyToken, async (req, res) => {
  */
 router.get('/list', verifyToken, async (req, res) => {
   try {
-    const concerts = await getActiveConcerts();
+    const concerts = await getConcerts();
 
     console.log(`[CONCERT] 콘서트 목록 조회: ${concerts.length}개`);
 
@@ -131,37 +132,46 @@ router.get('/list', verifyToken, async (req, res) => {
 /**
  * POST /api/concert/:roomId/join
  * 콘서트 참가
+ * (리슨 서버가 클라이언트 접속 시 호출)
  *
+ * Request Body:
+ * - clientId: 참가한 클라이언트의 사용자 ID
+ * 
  * Response:
  * - success: true/false
  * - message: 메시지
- * - concert: 콘서트 정보 (songs, currentSong, listenServer 포함)
  */
 router.post('/:roomId/join', verifyToken, async (req, res) => {
   try {
     const { roomId } = req.params;
-    const userId = req.userId;
+    const { clientId } = req.body;
+
+    if (!clientId) {
+      return res.status(400).json({
+        success: false,
+        error: 'MISSING_CLIENT_ID',
+        message: 'clientId is required'
+      });
+    }
+
+    // 콘서트 정보 조회하여 스튜디오 권한 확인 (리슨 서버만 호출 가능)
+    const concertInfo = await getConcertInfo(roomId);
+    if (concertInfo.studioUserId !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'PERMISSION_DENIED',
+        message: 'Only the studio listen server can register a client.'
+      });
+    }
 
     // 콘서트 참가
-    await joinConcert(roomId, userId);
+    await joinConcert(roomId, clientId);
 
-    // 콘서트 정보 조회
-    const concertInfo = await getConcertInfo(roomId);
-
-    console.log(`[CONCERT] 콘서트 참가: ${req.username} → ${roomId}`);
+    console.log(`[CONCERT] 클라이언트 참가: ${clientId} → ${roomId} (요청자: ${req.username})`);
 
     res.json({
       success: true,
-      message: 'Joined concert successfully',
-      concert: {
-        concertName: concertInfo.concertName,
-        studioName: concertInfo.studioName,
-        songs: concertInfo.songs,
-        currentSong: concertInfo.currentSong,
-        listenServer: concertInfo.listenServer,
-        isOpen: concertInfo.isOpen,
-        studioMetadataUrl: concertInfo.studioMetadataUrl
-      }
+      message: 'Client joined concert successfully'
     });
   } catch (error) {
     console.error('[CONCERT] 콘서트 참가 에러:', error);
@@ -170,6 +180,51 @@ router.post('/:roomId/join', verifyToken, async (req, res) => {
       error: 'JOIN_FAILED',
       message: error.message
     });
+  }
+});
+
+/**
+ * POST /api/concert/:roomId/leave
+ * 콘서트 퇴장
+ * (리슨 서버가 클라이언트 접속 종료 시 호출)
+ *
+ * Request Body:
+ * - clientId: 퇴장한 클라이언트의 사용자 ID
+ *
+ * Response:
+ * - success: true/false
+ * - message: 메시지
+ */
+router.post('/:roomId/leave', verifyToken, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { clientId } = req.body;
+
+    if (!clientId) {
+      return res.status(400).json({
+        success: false,
+        error: 'MISSING_CLIENT_ID',
+        message: 'clientId is required'
+      });
+    }
+
+    // 콘서트 정보 조회하여 스튜디오 권한 확인 (리슨 서버만 호출 가능)
+    const concertInfo = await getConcertInfo(roomId);
+    if (concertInfo.studioUserId !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'PERMISSION_DENIED',
+        message: 'Only the studio listen server can unregister a client.'
+      });
+    }
+
+    await leaveConcert(roomId, clientId);
+    console.log(`[CONCERT] 클라이언트 퇴장: ${clientId} ← ${roomId} (요청자: ${req.username})`);
+
+    res.json({ success: true, message: 'Client left concert successfully' });
+  } catch (error) {
+    console.error('[CONCERT] 콘서트 퇴장 에러:', error);
+    res.status(400).json({ success: false, error: 'LEAVE_FAILED', message: error.message });
   }
 });
 

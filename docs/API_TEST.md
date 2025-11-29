@@ -219,6 +219,466 @@ try {
 
 ---
 
+## 액세서리 프리셋 API 테스트
+
+### 1. 프리셋 저장
+
+```powershell
+$presetBody = @{
+    presetName = "My Preset 1"
+    accessories = @(
+        @{
+            socketName = "Head"
+            relativeLocation = @{ x = 0; y = 0; z = 10 }
+            relativeRotation = @{ pitch = 0; yaw = 0; roll = 0 }
+            modelUrl = "https://example.com/hat.fbx"
+        }
+    )
+    description = "A cool preset"
+    isPublic = $false
+} | ConvertTo-Json -Depth 5
+
+try {
+    $result = Invoke-RestMethod -Uri "$baseUrl/api/presets/save" `
+        -Method POST `
+        -ContentType "application/json" `
+        -Headers $headers `
+        -Body $presetBody
+
+    if ($result.success) {
+        Write-Host "프리셋 저장 성공!" -ForegroundColor Green
+        Write-Host "Preset ID: $($result.preset.id)"
+        Write-Host "Preset Name: $($result.preset.preset_name)"
+        $result.preset | Format-List
+    }
+} catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status Code: $statusCode" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        Write-Host "Error: $($errorBody.error)" -ForegroundColor Red
+        Write-Host "Message: $($errorBody.message)"
+    }
+}
+```
+
+---
+
+### 2. 프리셋 목록 조회
+
+```powershell
+try {
+    $presetList = Invoke-RestMethod -Uri "$baseUrl/api/presets/list?includePublic=true" `
+        -Method GET `
+        -Headers $headers
+
+    if ($presetList.success) {
+        Write-Host "프리셋 목록 조회 성공!" -ForegroundColor Green
+        Write-Host "총 프리셋 수: $($presetList.count)"
+        $presetList.presets | Format-Table id, preset_name, description, is_public, created_at
+    }
+} catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status Code: $statusCode" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        Write-Host "Error: $($errorBody.error)" -ForegroundColor Red
+        Write-Host "Message: $($errorBody.message)"
+    }
+}
+```
+
+---
+
+### 3. 프리셋 상세 조회
+
+```powershell
+$presetId = 1  # 조회할 프리셋 ID
+
+try {
+    $preset = Invoke-RestMethod -Uri "$baseUrl/api/presets/$presetId" `
+        -Method GET `
+        -Headers $headers
+
+    if ($preset.success) {
+        Write-Host "프리셋 조회 성공!" -ForegroundColor Green
+        Write-Host "Preset Name: $($preset.preset.preset_name)"
+        Write-Host "Accessories Count: $($preset.preset.accessories.Count)"
+        $preset.preset | ConvertTo-Json -Depth 5
+    }
+} catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status Code: $statusCode" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        Write-Host "Error: $($errorBody.error)" -ForegroundColor Red
+        Write-Host "Message: $($errorBody.message)"
+    }
+}
+```
+
+---
+
+### 4. 프리셋 업데이트
+
+```powershell
+$presetId = 1  # 수정할 프리셋 ID
+$updateBody = @{
+    presetName = "Updated Preset Name"
+    description = "Updated description"
+    isPublic = $true
+} | ConvertTo-Json
+
+try {
+    $result = Invoke-RestMethod -Uri "$baseUrl/api/presets/$presetId" `
+        -Method PUT `
+        -ContentType "application/json" `
+        -Headers $headers `
+        -Body $updateBody
+
+    if ($result.success) {
+        Write-Host "프리셋 수정 성공!" -ForegroundColor Green
+        $result.preset | Format-List
+    }
+} catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status Code: $statusCode" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        Write-Host "Error: $($errorBody.error)" -ForegroundColor Red
+        Write-Host "Message: $($errorBody.message)"
+    }
+}
+```
+
+---
+
+### 5. 프리셋 삭제
+
+```powershell
+$presetId = 1  # 삭제할 프리셋 ID
+
+try {
+    $result = Invoke-RestMethod -Uri "$baseUrl/api/presets/$presetId" `
+        -Method DELETE `
+        -Headers $headers
+
+    if ($result.success) {
+        Write-Host "프리셋 삭제 성공!" -ForegroundColor Green
+        Write-Host "Message: $($result.message)"
+    }
+} catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status Code: $statusCode" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        Write-Host "Error: $($errorBody.error)" -ForegroundColor Red
+        Write-Host "Message: $($errorBody.message)"
+    }
+}
+```
+
+---
+
+## 콘서트 관리 API 테스트
+
+### 1. 콘서트 생성
+
+```powershell
+$concertBody = @{
+    concertName = "My Concert"
+    songs = @(
+        @{
+            songNum = 1
+            audioId = 5
+            streamUrl = "https://example.com/audio/song1.mp3"
+            stageDirectionId = 10
+        }
+    )
+    accessories = @(
+        @{
+            socketName = "Head"
+            relativeLocation = @{ x = 0; y = 0; z = 10 }
+            relativeRotation = @{ pitch = 0; yaw = 0; roll = 0 }
+            modelUrl = "https://example.com/hat.fbx"
+        }
+    )
+    maxAudience = 100
+} | ConvertTo-Json -Depth 5
+
+try {
+    $result = Invoke-RestMethod -Uri "$baseUrl/api/concert/create" `
+        -Method POST `
+        -ContentType "application/json" `
+        -Headers $headers `
+        -Body $concertBody
+
+    if ($result.success) {
+        Write-Host "콘서트 생성 성공!" -ForegroundColor Green
+        Write-Host "Room ID: $($result.roomId)"
+        Write-Host "Expires In: $($result.expiresIn) seconds"
+        $global:testRoomId = $result.roomId  # 다른 테스트에서 사용
+    }
+} catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status Code: $statusCode" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        Write-Host "Error: $($errorBody.error)" -ForegroundColor Red
+        Write-Host "Message: $($errorBody.message)"
+    }
+}
+```
+
+---
+
+### 2. 콘서트 목록 조회
+
+```powershell
+try {
+    $concertList = Invoke-RestMethod -Uri "$baseUrl/api/concert/list" `
+        -Method GET `
+        -Headers $headers
+
+    if ($concertList.success) {
+        Write-Host "콘서트 목록 조회 성공!" -ForegroundColor Green
+        Write-Host "총 콘서트 수: $($concertList.count)"
+        $concertList.concerts | Format-Table roomId, concertName, studioName, currentAudience, maxAudience, isOpen
+    }
+} catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status Code: $statusCode" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        Write-Host "Error: $($errorBody.error)" -ForegroundColor Red
+        Write-Host "Message: $($errorBody.message)"
+    }
+}
+```
+
+---
+
+### 3. 콘서트 정보 조회
+
+```powershell
+$roomId = $global:testRoomId  # 또는 직접 입력
+
+try {
+    $concert = Invoke-RestMethod -Uri "$baseUrl/api/concert/$roomId/info" `
+        -Method GET `
+        -Headers $headers
+
+    if ($concert.success) {
+        Write-Host "콘서트 정보 조회 성공!" -ForegroundColor Green
+        $concert.concert | ConvertTo-Json -Depth 5
+    }
+} catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status Code: $statusCode" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        Write-Host "Error: $($errorBody.error)" -ForegroundColor Red
+        Write-Host "Message: $($errorBody.message)"
+    }
+}
+```
+
+---
+
+### 4. 리슨 서버 정보 등록
+
+```powershell
+$roomId = $global:testRoomId
+$listenServerBody = @{
+    localIP = "192.168.0.100"
+    port = 7777
+    publicIP = "1.2.3.4"
+    publicPort = 7777
+} | ConvertTo-Json
+
+try {
+    $result = Invoke-RestMethod -Uri "$baseUrl/api/concert/$roomId/listen-server" `
+        -Method POST `
+        -ContentType "application/json" `
+        -Headers $headers `
+        -Body $listenServerBody
+
+    if ($result.success) {
+        Write-Host "리슨 서버 정보 등록 성공!" -ForegroundColor Green
+        $result.listenServer | Format-List
+    }
+} catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status Code: $statusCode" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        Write-Host "Error: $($errorBody.error)" -ForegroundColor Red
+        Write-Host "Message: $($errorBody.message)"
+    }
+}
+```
+
+---
+
+### 5. 콘서트 개방/비공개 토글
+
+```powershell
+$roomId = $global:testRoomId
+$toggleBody = @{
+    isOpen = $true
+} | ConvertTo-Json
+
+try {
+    $result = Invoke-RestMethod -Uri "$baseUrl/api/concert/$roomId/toggle-open" `
+        -Method POST `
+        -ContentType "application/json" `
+        -Headers $headers `
+        -Body $toggleBody
+
+    if ($result.success) {
+        Write-Host "콘서트 개방 상태 변경 성공!" -ForegroundColor Green
+        Write-Host "Is Open: $($result.isOpen)"
+        Write-Host "Message: $($result.message)"
+    }
+} catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status Code: $statusCode" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        Write-Host "Error: $($errorBody.error)" -ForegroundColor Red
+        Write-Host "Message: $($errorBody.message)"
+    }
+}
+```
+
+---
+
+### 6. 노래 추가
+
+```powershell
+$roomId = $global:testRoomId
+$songBody = @{
+    songNum = 2
+    audioId = 10
+    streamUrl = "https://example.com/audio/song2.mp3"
+    stageDirectionId = 20
+} | ConvertTo-Json
+
+try {
+    $result = Invoke-RestMethod -Uri "$baseUrl/api/concert/$roomId/songs/add" `
+        -Method POST `
+        -ContentType "application/json" `
+        -Headers $headers `
+        -Body $songBody
+
+    if ($result.success) {
+        Write-Host "노래 추가 성공!" -ForegroundColor Green
+        Write-Host "Songs Count: $($result.songs.Count)"
+        Write-Host "Current Song: $($result.currentSong)"
+    }
+} catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status Code: $statusCode" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        Write-Host "Error: $($errorBody.error)" -ForegroundColor Red
+        Write-Host "Message: $($errorBody.message)"
+    }
+}
+```
+
+---
+
+### 7. 현재 곡 변경
+
+```powershell
+$roomId = $global:testRoomId
+$changeSongBody = @{
+    songNum = 2
+} | ConvertTo-Json
+
+try {
+    $result = Invoke-RestMethod -Uri "$baseUrl/api/concert/$roomId/songs/change" `
+        -Method POST `
+        -ContentType "application/json" `
+        -Headers $headers `
+        -Body $changeSongBody
+
+    if ($result.success) {
+        Write-Host "곡 변경 성공!" -ForegroundColor Green
+        Write-Host "Current Song: $($result.currentSong)"
+    }
+} catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status Code: $statusCode" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        Write-Host "Error: $($errorBody.error)" -ForegroundColor Red
+        Write-Host "Message: $($errorBody.message)"
+    }
+}
+```
+
+---
+
+### 8. 액세서리 전체 교체
+
+```powershell
+$roomId = $global:testRoomId
+$accessoriesBody = @{
+    accessories = @(
+        @{
+            socketName = "Head"
+            relativeLocation = @{ x = 0; y = 0; z = 10 }
+            relativeRotation = @{ pitch = 0; yaw = 0; roll = 0 }
+            modelUrl = "https://example.com/hat.fbx"
+        },
+        @{
+            socketName = "RightHand"
+            relativeLocation = @{ x = 5; y = 0; z = 0 }
+            relativeRotation = @{ pitch = 0; yaw = 90; roll = 0 }
+            modelUrl = "https://example.com/sword.fbx"
+        }
+    )
+} | ConvertTo-Json -Depth 5
+
+try {
+    $result = Invoke-RestMethod -Uri "$baseUrl/api/concert/$roomId/accessories" `
+        -Method PUT `
+        -ContentType "application/json" `
+        -Headers $headers `
+        -Body $accessoriesBody
+
+    if ($result.success) {
+        Write-Host "액세서리 교체 성공!" -ForegroundColor Green
+        Write-Host "Accessories Count: $($result.accessories.Count)"
+    }
+} catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status Code: $statusCode" -ForegroundColor Red
+
+    if ($_.ErrorDetails.Message) {
+        $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
+        Write-Host "Error: $($errorBody.error)" -ForegroundColor Red
+        Write-Host "Message: $($errorBody.message)"
+    }
+}
+```
+
+---
+
 ## 3D 모델 API 테스트
 
 ### 1. 내 모델 목록 조회
