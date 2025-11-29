@@ -13,7 +13,9 @@ const {
   getCurrentSong,
   addAccessory,
   removeAccessory,
-  updateAccessories
+  updateAccessories,
+  updateListenServer,
+  toggleConcertOpen
 } = require('../services/concert-service');
 
 /**
@@ -133,7 +135,7 @@ router.get('/list', verifyToken, async (req, res) => {
  * Response:
  * - success: true/false
  * - message: 메시지
- * - concert: 콘서트 정보 (songs, currentSong 포함)
+ * - concert: 콘서트 정보 (songs, currentSong, listenServer 포함)
  */
 router.post('/:roomId/join', verifyToken, async (req, res) => {
   try {
@@ -155,7 +157,10 @@ router.post('/:roomId/join', verifyToken, async (req, res) => {
         concertName: concertInfo.concertName,
         studioName: concertInfo.studioName,
         songs: concertInfo.songs,
-        currentSong: concertInfo.currentSong
+        currentSong: concertInfo.currentSong,
+        listenServer: concertInfo.listenServer,
+        isOpen: concertInfo.isOpen,
+        studioMetadataUrl: concertInfo.studioMetadataUrl
       }
     });
   } catch (error) {
@@ -518,6 +523,116 @@ router.put('/:roomId/accessories', verifyToken, async (req, res) => {
     res.status(400).json({
       success: false,
       error: 'UPDATE_ACCESSORIES_FAILED',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/concert/:roomId/listen-server
+ * 리슨 서버 정보 등록/업데이트 (스튜디오만 가능)
+ *
+ * Request Body:
+ * - localIP: 로컬 IP 주소 (예: 192.168.0.100)
+ * - port: 포트 번호 (예: 7777)
+ * - publicIP: 공인 IP 주소 (optional, 외부 접속용)
+ * - publicPort: 공인 포트 번호 (optional, 외부 접속용)
+ */
+router.post('/:roomId/listen-server', verifyToken, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { localIP, port, publicIP, publicPort } = req.body;
+
+    // 필수 필드 검증
+    if (!localIP || !port) {
+      return res.status(400).json({
+        success: false,
+        error: 'MISSING_FIELDS',
+        message: 'localIP and port are required'
+      });
+    }
+
+    // 콘서트 정보 조회하여 스튜디오 권한 확인
+    const concertInfo = await getConcertInfo(roomId);
+    if (concertInfo.studioUserId !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'PERMISSION_DENIED',
+        message: 'Only studio can update listen server info'
+      });
+    }
+
+    // 리슨 서버 정보 업데이트
+    const updatedConcert = await updateListenServer(roomId, {
+      localIP,
+      port,
+      publicIP,
+      publicPort
+    });
+
+    console.log(`[CONCERT] 리슨 서버 정보 등록: ${roomId} - ${localIP}:${port}`);
+
+    res.json({
+      success: true,
+      message: 'Listen server info updated successfully',
+      listenServer: updatedConcert.listenServer
+    });
+  } catch (error) {
+    console.error('[CONCERT] 리슨 서버 정보 등록 에러:', error);
+    res.status(400).json({
+      success: false,
+      error: 'UPDATE_LISTEN_SERVER_FAILED',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/concert/:roomId/toggle-open
+ * 콘서트 개방/비공개 상태 토글 (스튜디오만 가능)
+ *
+ * Request Body:
+ * - isOpen: 개방 여부 (true: 개방, false: 비공개)
+ */
+router.post('/:roomId/toggle-open', verifyToken, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { isOpen } = req.body;
+
+    // 필수 필드 검증
+    if (typeof isOpen !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: 'MISSING_FIELDS',
+        message: 'isOpen (boolean) is required'
+      });
+    }
+
+    // 콘서트 정보 조회하여 스튜디오 권한 확인
+    const concertInfo = await getConcertInfo(roomId);
+    if (concertInfo.studioUserId !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'PERMISSION_DENIED',
+        message: 'Only studio can toggle concert open status'
+      });
+    }
+
+    // 개방 상태 토글
+    const updatedConcert = await toggleConcertOpen(roomId, isOpen);
+
+    console.log(`[CONCERT] 콘서트 개방 상태 변경: ${roomId} - ${isOpen ? 'OPEN' : 'CLOSED'}`);
+
+    res.json({
+      success: true,
+      message: `Concert is now ${isOpen ? 'open' : 'closed'}`,
+      isOpen: updatedConcert.isOpen
+    });
+  } catch (error) {
+    console.error('[CONCERT] 콘서트 개방 상태 변경 에러:', error);
+    res.status(400).json({
+      success: false,
+      error: 'TOGGLE_OPEN_FAILED',
       message: error.message
     });
   }

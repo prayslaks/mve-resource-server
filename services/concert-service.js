@@ -19,6 +19,16 @@ async function createConcert(roomId, concertData) {
     concertData.accessories = [];
   }
 
+  // 리슨 서버 정보 초기화 (없으면 null)
+  if (!concertData.listenServer) {
+    concertData.listenServer = null;
+  }
+
+  // 콘서트 개방 상태 초기화 (기본값: false - 비공개)
+  if (concertData.isOpen === undefined) {
+    concertData.isOpen = false;
+  }
+
   // 현재 재생 곡은 첫 번째 곡으로 설정 (없으면 null)
   concertData.currentSong = concertData.songs.length > 0 ? concertData.songs[0].songNum : null;
 
@@ -42,10 +52,17 @@ async function createConcert(roomId, concertData) {
  */
 async function joinConcert(roomId, userId) {
   const sessionKey = `concert:room:${roomId}:info`;
-  const sessionExists = await redisClient.exists(sessionKey);
+  const sessionData = await redisClient.get(sessionKey);
 
-  if (!sessionExists) {
+  if (!sessionData) {
     throw new Error('Concert not found or expired');
+  }
+
+  const concertInfo = JSON.parse(sessionData);
+
+  // 콘서트 개방 상태 확인
+  if (!concertInfo.isOpen) {
+    throw new Error('Concert is not open for joining');
   }
 
   // 참가자 목록에 추가 (set 자료구조 사용)
@@ -86,13 +103,13 @@ async function getConcertInfo(roomId) {
 }
 
 /**
- * 활성 콘서트 목록 조회 (최신 10개)
- * @returns {Promise<Array>} - 콘서트 목록
+ * 활성 콘서트 목록 조회 (최신 10개, 개방/비공개 모두 포함)
+ * @returns {Promise<Array>} - 콘서트 목록 (isOpen 필드 포함)
  */
 async function getActiveConcerts() {
-  // Redis 5.x 호환: 전체 가져와서 역순 정렬 후 slice
+  // Redis 5.x 호환: 전체 가져와서 역순 정렬
   const allRoomIds = await redisClient.zRange('sessions:active', 0, -1);
-  const roomIds = allRoomIds.reverse().slice(0, 10);
+  const roomIds = allRoomIds.reverse();
 
   const concerts = await Promise.all(
     roomIds.map(async (roomId) => {
@@ -108,16 +125,19 @@ async function getActiveConcerts() {
         return null;
       }
 
+      const concertInfo = JSON.parse(info);
+
+      // 비공개 콘서트도 목록에 포함 (클라이언트가 isOpen으로 구분)
       return {
         roomId,
-        ...JSON.parse(info),
+        ...concertInfo,
         currentAudience: audienceCount
       };
     })
   );
 
-  // null 필터링 (만료된 콘서트 제외)
-  return concerts.filter(c => c !== null);
+  // null 필터링 (만료된 콘서트만 제외) 후 최신 10개만
+  return concerts.filter(c => c !== null).slice(0, 10);
 }
 
 /**
@@ -346,6 +366,63 @@ async function updateAccessories(roomId, accessories) {
   return concertInfo;
 }
 
+/**
+ * 리슨 서버 정보 등록/업데이트
+ * @param {string} roomId - 콘서트 방 ID
+ * @param {object} listenServerData - 리슨 서버 정보 { localIP, port, publicIP (optional), publicPort (optional) }
+ * @returns {Promise<object>} - 업데이트된 콘서트 정보
+ */
+async function updateListenServer(roomId, listenServerData) {
+  const key = `concert:room:${roomId}:info`;
+  const data = await redisClient.get(key);
+
+  if (!data) {
+    throw new Error('Concert not found');
+  }
+
+  const concertInfo = JSON.parse(data);
+
+  // 리슨 서버 정보 업데이트
+  concertInfo.listenServer = {
+    localIP: listenServerData.localIP,
+    port: listenServerData.port,
+    publicIP: listenServerData.publicIP || null,
+    publicPort: listenServerData.publicPort || null
+  };
+
+  // 업데이트된 정보 저장 (TTL 유지)
+  const ttl = await redisClient.ttl(key);
+  await redisClient.setEx(key, ttl > 0 ? ttl : 7200, JSON.stringify(concertInfo));
+
+  return concertInfo;
+}
+
+/**
+ * 콘서트 개방/비공개 상태 토글
+ * @param {string} roomId - 콘서트 방 ID
+ * @param {boolean} isOpen - 개방 여부 (true: 개방, false: 비공개)
+ * @returns {Promise<object>} - 업데이트된 콘서트 정보
+ */
+async function toggleConcertOpen(roomId, isOpen) {
+  const key = `concert:room:${roomId}:info`;
+  const data = await redisClient.get(key);
+
+  if (!data) {
+    throw new Error('Concert not found');
+  }
+
+  const concertInfo = JSON.parse(data);
+
+  // 개방 상태 업데이트
+  concertInfo.isOpen = isOpen;
+
+  // 업데이트된 정보 저장 (TTL 유지)
+  const ttl = await redisClient.ttl(key);
+  await redisClient.setEx(key, ttl > 0 ? ttl : 7200, JSON.stringify(concertInfo));
+
+  return concertInfo;
+}
+
 module.exports = {
   createConcert,
   joinConcert,
@@ -358,5 +435,7 @@ module.exports = {
   getCurrentSong,
   addAccessory,
   removeAccessory,
-  updateAccessories
+  updateAccessories,
+  updateListenServer,
+  toggleConcertOpen
 };
