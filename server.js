@@ -5,6 +5,9 @@ const fs = require('fs');
 require('dotenv').config();
 
 // 서버 내 라우트 경로
+console.log('[SERVER] Loading Redis client...');
+const redisClient = require('./redis-client');
+console.log('[SERVER] Redis client loaded successfully');
 const audioRoutes = require('./routes/audio');
 const modelRoutes = require('./routes/models');
 const concertRoutes = require('./routes/concert');
@@ -24,9 +27,8 @@ app.use('/api/concert', concertRoutes);                    // 콘서트 API (JWT
 app.use('/api/accessory-presets', accessoryPresetRoutes);  // 액세서리 프리셋 API (JWT 필요)
 
 // 헬스 체크
-app.get('/health', async (req, res) => {
+app.get('/health/resource', async (req, res) => {
     try {
-        const redisClient = require('./redis-client');
         const redisPing = await redisClient.ping();
 
         res.json({
@@ -52,7 +54,7 @@ app.get('/', (req, res) => {
         version: '1.0.0',
         description: 'Manage audio file streaming and user 3D model file paths',
         endpoints: {
-            health: 'GET /health',
+            health: 'GET /health/resource',
             audio_list: 'GET /api/audio/list (requires JWT)',
             audio_info: 'GET /api/audio/:id (requires JWT)',
             audio_stream: 'GET /api/audio/stream/:id (requires JWT, supports range requests)',
