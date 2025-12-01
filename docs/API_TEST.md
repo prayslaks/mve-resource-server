@@ -58,12 +58,12 @@ $baseUrl = "http://localhost:3001"  # MVE Resource Server 기본 포트
 
 ```powershell
 # 방법 1: Invoke-RestMethod (권장)
-Invoke-RestMethod -Uri "$baseUrl/health"
+Invoke-RestMethod -Uri "$baseUrl/health/resource"
 ```
 
 ```powershell
 # 방법 2: Invoke-WebRequest (상세 정보 필요 시)
-$response = Invoke-WebRequest -Uri "$baseUrl/health"
+$response = Invoke-WebRequest -Uri "$baseUrl/health/resource"
 $response.Content | ConvertFrom-Json
 $response.StatusCode
 ```
@@ -73,6 +73,7 @@ $response.StatusCode
 {
   "status": "ok",
   "server": "mve-resource-server",
+  "redis": "connected",
   "timestamp": "2024-01-01T00:00:00.000Z"
 }
 ```
@@ -239,7 +240,7 @@ $presetBody = @{
 } | ConvertTo-Json -Depth 5
 
 try {
-    $result = Invoke-RestMethod -Uri "$baseUrl/api/presets/save" `
+    $result = Invoke-RestMethod -Uri "$baseUrl/api/accessory-presets/save" `
         -Method POST `
         -ContentType "application/json" `
         -Headers $headers `
@@ -269,7 +270,7 @@ try {
 
 ```powershell
 try {
-    $presetList = Invoke-RestMethod -Uri "$baseUrl/api/presets/list?includePublic=true" `
+    $presetList = Invoke-RestMethod -Uri "$baseUrl/api/accessory-presets/list?includePublic=true" `
         -Method GET `
         -Headers $headers
 
@@ -298,7 +299,7 @@ try {
 $presetId = 1  # 조회할 프리셋 ID
 
 try {
-    $preset = Invoke-RestMethod -Uri "$baseUrl/api/presets/$presetId" `
+    $preset = Invoke-RestMethod -Uri "$baseUrl/api/accessory-presets/$presetId" `
         -Method GET `
         -Headers $headers
 
@@ -333,7 +334,7 @@ $updateBody = @{
 } | ConvertTo-Json
 
 try {
-    $result = Invoke-RestMethod -Uri "$baseUrl/api/presets/$presetId" `
+    $result = Invoke-RestMethod -Uri "$baseUrl/api/accessory-presets/$presetId" `
         -Method PUT `
         -ContentType "application/json" `
         -Headers $headers `
@@ -363,7 +364,7 @@ try {
 $presetId = 1  # 삭제할 프리셋 ID
 
 try {
-    $result = Invoke-RestMethod -Uri "$baseUrl/api/presets/$presetId" `
+    $result = Invoke-RestMethod -Uri "$baseUrl/api/accessory-presets/$presetId" `
         -Method DELETE `
         -Headers $headers
 
@@ -840,7 +841,7 @@ try {
 ### 헬스 체크
 
 ```bash
-curl http://localhost:3001/health
+curl http://localhost:3001/health/resource
 ```
 
 ### 음원 목록 조회
@@ -972,8 +973,9 @@ try {
 # 2. 헬스 체크
 Write-Host "`n[2] Resource Server 헬스 체크..." -ForegroundColor Yellow
 try {
-    $health = Invoke-RestMethod -Uri "$resourceServerUrl/health"
+    $health = Invoke-RestMethod -Uri "$resourceServerUrl/health/resource"
     Write-Host "✓ Resource Server 정상 작동: $($health.status)" -ForegroundColor Green
+    Write-Host "  Redis: $($health.redis)" -ForegroundColor Gray
 } catch {
     Write-Host "✗ Resource Server 연결 실패" -ForegroundColor Red
     exit

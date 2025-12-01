@@ -25,13 +25,14 @@
 
 ---
 
-## 헬스 체크 (GET /health)
+## 헬스 체크 (GET /health/resource)
 
 ### 성공 응답 (200 OK)
 ```json
 {
   "status": "ok",
   "server": "mve-resource-server",
+  "redis": "connected",
   "timestamp": "2024-01-01T00:00:00.000Z"
 }
 ```
@@ -308,7 +309,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ## 액세서리 프리셋 API (모든 엔드포인트는 JWT 인증 필요)
 
-### 1. 프리셋 저장 (POST /api/presets/save)
+### 1. 프리셋 저장 (POST /api/accessory-presets/save)
 
 #### 요청
 ```json
@@ -364,11 +365,11 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ---
 
-### 2. 프리셋 목록 조회 (GET /api/presets/list)
+### 2. 프리셋 목록 조회 (GET /api/accessory-presets/list)
 
 #### 요청
 ```
-GET /api/presets/list?includePublic=true
+GET /api/accessory-presets/list?includePublic=true
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
@@ -403,11 +404,11 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ---
 
-### 3. 프리셋 상세 조회 (GET /api/presets/:id)
+### 3. 프리셋 상세 조회 (GET /api/accessory-presets/:id)
 
 #### 요청
 ```
-GET /api/presets/1
+GET /api/accessory-presets/1
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
@@ -455,7 +456,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ---
 
-### 4. 프리셋 업데이트 (PUT /api/presets/:id)
+### 4. 프리셋 업데이트 (PUT /api/accessory-presets/:id)
 
 #### 요청
 ```json
@@ -492,11 +493,11 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ---
 
-### 5. 프리셋 삭제 (DELETE /api/presets/:id)
+### 5. 프리셋 삭제 (DELETE /api/accessory-presets/:id)
 
 #### 요청
 ```
-DELETE /api/presets/1
+DELETE /api/accessory-presets/1
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
