@@ -1,8 +1,9 @@
 -- MVE Resource Server - Database Initialization
--- This script assumes the users table from login-server already exists.
+-- This database is now SEPARATE from logindb
+-- user_id references are validated at application level via JWT
 
 -- ============================================
--- 1. 모든 유저를 위한 음원 파일 테이블
+-- 1. 모든 유저를 위한 음원 파일 테이블 (공용 리소스)
 -- ============================================
 CREATE TABLE IF NOT EXISTS audio_files (
     id SERIAL PRIMARY KEY,
@@ -17,11 +18,12 @@ CREATE TABLE IF NOT EXISTS audio_files (
 );
 
 -- ============================================
--- 2. 각 유저를 위한 모델 파일 테이블
+-- 2. 각 유저를 위한 모델 파일 테이블 (유저별 리소스)
 -- ============================================
+-- user_id는 JWT에서 검증된 값으로만 추가됨 (application level 검증)
 CREATE TABLE IF NOT EXISTS user_models (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL,
     model_name VARCHAR(255) NOT NULL,
     file_path VARCHAR(500) NOT NULL,
     file_size BIGINT,
@@ -80,11 +82,12 @@ BEGIN
 END $$;
 
 -- ============================================
--- 2. 액세서리 프리셋 테이블
+-- 3. 액세서리 프리셋 테이블 (유저별 리소스)
 -- ============================================
+-- user_id는 JWT에서 검증된 값으로만 추가됨 (application level 검증)
 CREATE TABLE IF NOT EXISTS accessory_presets (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL,
     preset_name VARCHAR(100) NOT NULL,
     description TEXT,
     file_path VARCHAR(500) NOT NULL,
