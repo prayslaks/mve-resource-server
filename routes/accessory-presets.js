@@ -50,7 +50,7 @@ router.post('/save', verifyToken, async (req, res) => {
       isPublic || false
     );
 
-    console.log(`[PRESET] 프리셋 저장: ${preset.id} by ${req.username}`);
+    console.log(`[PRESET] 프리셋 저장: ${preset.id} by ${req.email}`);
 
     res.json({
       success: true,
@@ -89,7 +89,7 @@ router.get('/list', verifyToken, async (req, res) => {
 
     const presets = await getUserPresets(req.userId, includePublic);
 
-    console.log(`[PRESET] 프리셋 목록 조회: ${req.username} - ${presets.length}개`);
+    console.log(`[PRESET] 프리셋 목록 조회: ${req.email} - ${presets.length}개`);
 
     res.json({
       success: true,
@@ -124,7 +124,7 @@ router.get('/:id', verifyToken, async (req, res) => {
 
     const preset = await getPreset(presetId, req.userId);
 
-    console.log(`[PRESET] 프리셋 조회: ${presetId} by ${req.username}`);
+    console.log(`[PRESET] 프리셋 조회: ${presetId} by ${req.email}`);
 
     res.json({
       success: true,
@@ -198,7 +198,7 @@ router.put('/:id', verifyToken, async (req, res) => {
 
     const preset = await updatePreset(presetId, req.userId, updates);
 
-    console.log(`[PRESET] 프리셋 업데이트: ${presetId} by ${req.username}`);
+    console.log(`[PRESET] 프리셋 업데이트: ${presetId} by ${req.email}`);
 
     res.json({
       success: true,
@@ -258,7 +258,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
 
     await deletePreset(presetId, req.userId);
 
-    console.log(`[PRESET] 프리셋 삭제: ${presetId} by ${req.username}`);
+    console.log(`[PRESET] 프리셋 삭제: ${presetId} by ${req.email}`);
 
     res.json({
       success: true,

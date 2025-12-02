@@ -71,7 +71,7 @@ router.post('/create', verifyToken, async (req, res) => {
     // 콘서트 데이터 구성
     const concertData = {
       studioUserId: req.userId,
-      studioName: req.username,
+      studioName: req.email,
       concertName,
       songs: songs || [],
       accessories: accessories || [],
@@ -82,7 +82,7 @@ router.post('/create', verifyToken, async (req, res) => {
     // 콘서트 생성
     const result = await createConcert(roomId, concertData);
 
-    console.log(`[CONCERT] 콘서트 생성: ${roomId} by ${req.username}`);
+    console.log(`[CONCERT] 콘서트 생성: ${roomId} by ${req.email}`);
 
     res.json({
       success: true,
@@ -167,7 +167,7 @@ router.post('/:roomId/join', verifyToken, async (req, res) => {
     // 콘서트 참가
     await joinConcert(roomId, clientId);
 
-    console.log(`[CONCERT] 클라이언트 참가: ${clientId} → ${roomId} (요청자: ${req.username})`);
+    console.log(`[CONCERT] 클라이언트 참가: ${clientId} → ${roomId} (요청자: ${req.email})`);
 
     res.json({
       success: true,
@@ -219,7 +219,7 @@ router.post('/:roomId/leave', verifyToken, async (req, res) => {
     }
 
     await leaveConcert(roomId, clientId);
-    console.log(`[CONCERT] 클라이언트 퇴장: ${clientId} ← ${roomId} (요청자: ${req.username})`);
+    console.log(`[CONCERT] 클라이언트 퇴장: ${clientId} ← ${roomId} (요청자: ${req.email})`);
 
     res.json({ success: true, message: 'Client left concert successfully' });
   } catch (error) {

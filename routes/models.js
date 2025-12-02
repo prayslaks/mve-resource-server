@@ -368,7 +368,7 @@ router.post('/generate', uploadThumbnail.single('image'), async (req, res) => {
 
         console.log('[MODEL-GENERATE] 모델 생성 요청:', {
             userId: req.userId,
-            username: req.username,
+            email: req.email,
             prompt,
             hasImage: !!req.file,
             timestamp: new Date().toISOString()
@@ -427,7 +427,7 @@ router.post('/generate', uploadThumbnail.single('image'), async (req, res) => {
             job_id,
             secret: job_secret,
             user_id: req.userId,
-            username: req.username,
+            email: req.email,
             prompt,
             image_path: req.file.path,
             status: 'pending',
@@ -635,7 +635,7 @@ router.get('/list', async (req, res) => {
     try {
         console.log('[MODEL-LIST] 모델 목록 조회 시도:', {
             userId: req.userId,
-            username: req.username,
+            email: req.email,
             timestamp: new Date().toISOString()
         });
 
@@ -756,7 +756,7 @@ router.post('/upload', uploadModelWithThumbnail.fields([
     try {
         console.log('[MODEL-UPLOAD] 모델 업로드 시도:', {
             userId: req.userId,
-            username: req.username,
+            email: req.email,
             files: req.files,
             timestamp: new Date().toISOString()
         });

@@ -88,12 +88,12 @@ const verifyToken = (req, res, next) => {
 
         console.log('[AUTH] SUCCESS: 토큰 검증 성공', {
             userId: decoded.userId,
-            username: decoded.username
+            email: decoded.email
         });
 
         // 요청 객체에 사용자 정보 추가
         req.userId = decoded.userId;
-        req.username = decoded.username;
+        req.email = decoded.email;
         next();
     });
 };
