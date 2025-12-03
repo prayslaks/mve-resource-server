@@ -9,6 +9,31 @@ const verifyToken = (req, res, next) => {
 
     const authHeader = req.headers['authorization'];
 
+    // --- 개발용 토큰 처리 시작 ---
+    // 보안: 개발 환경에서만 활성화
+    console.log('[AUTH] NODE_ENV:', process.env.NODE_ENV);
+    if (process.env.NODE_ENV === 'development') {
+        const devToken = 'MVE_DEV_AUTH_TOKEN_2024_A';
+        const incomingToken = authHeader?.split(' ')[1];
+
+        console.log('[AUTH] 개발 모드 - 토큰 비교:', {
+            received: incomingToken,
+            expected: devToken,
+            match: incomingToken === devToken
+        });
+
+        if (incomingToken === devToken) {
+            console.log('[AUTH] 개발용 토큰 확인. JWT 검증을 우회합니다.');
+
+            // 요청 객체에 가상 개발 사용자 정보 할당
+            req.userId = 'dev-user-01';
+            req.email = 'developer@mve.com';
+
+            return next();
+        }
+    }
+    // --- 개발용 토큰 처리 종료 ---
+
     // Authorization 헤더 확인
     if (!authHeader) {
         console.log('[AUTH] ERROR: Authorization 헤더 없음');

@@ -96,6 +96,7 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`MVE Resource Server running on port ${PORT}`);
+    console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`DB: ${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`);
     console.log(`Redis: ${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`);

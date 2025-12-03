@@ -107,6 +107,9 @@ npm install
 ### 개발 환경 (로컬 스토리지)
 
 ```env
+# Environment Configuration
+NODE_ENV=development
+
 # Server Configuration
 PORT=3001
 
@@ -128,6 +131,9 @@ JWT_SECRET=your-strong-secret-key
 ### 프로덕션 환경 (AWS S3)
 
 ```env
+# Environment Configuration
+NODE_ENV=production
+
 # Server Configuration
 PORT=3001
 
@@ -152,8 +158,41 @@ JWT_SECRET=your-strong-secret-key
 ```
 
 **⚠️ 중요**:
+- `NODE_ENV`: 환경 구분 (development / production)
+  - `development`: 개발용 토큰 인증 우회 로직 활성화
+  - `production`: 보안을 위해 반드시 JWT 토큰 검증 실행
 - `JWT_SECRET`과 DB 설정은 **반드시 login-server와 동일**해야 합니다!
 - AWS S3 설정은 [docs/AWS_S3_SETUP.md](docs/AWS_S3_SETUP.md)를 참고하세요.
+
+### 개발용 토큰 인증 우회 (Unreal Engine 개발 빌드용)
+
+**개발 환경**(`NODE_ENV=development`)에서는 로그인 없이 API를 테스트할 수 있도록 하드코딩된 개발용 토큰을 지원합니다.
+
+**개발용 토큰:**
+```
+MVE_DEV_AUTH_TOKEN_2024_A
+```
+
+**사용 방법:**
+```http
+GET /api/audio/list
+Authorization: Bearer MVE_DEV_AUTH_TOKEN_2024_A
+```
+
+**보안:**
+- `NODE_ENV=development`일 때만 작동
+- 프로덕션 환경(`NODE_ENV=production`)에서는 **절대 활성화되지 않음**
+- 개발용 토큰 사용 시 가상 사용자 정보(`dev-user-01`) 자동 할당
+
+**Unreal Engine 예제:**
+```cpp
+// 개발 빌드에서는 하드코딩된 개발용 토큰 사용
+FString DevToken = TEXT("MVE_DEV_AUTH_TOKEN_2024_A");
+Request->SetHeader(TEXT("Authorization"), TEXT("Bearer ") + DevToken);
+
+// 프로덕션 빌드에서는 실제 JWT 토큰 사용
+Request->SetHeader(TEXT("Authorization"), TEXT("Bearer ") + ActualJWTToken);
+```
 
 ---
 
