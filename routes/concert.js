@@ -20,6 +20,56 @@ const {
 } = require('../services/concert-service');
 
 /**
+ * @swagger
+ * /api/concert/create:
+ *   post:
+ *     summary: 콘서트 생성
+ *     description: 콘서트 세션을 생성합니다 (스튜디오 사용자 전용)
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - concertName
+ *             properties:
+ *               concertName:
+ *                 type: string
+ *                 example: "My Concert"
+ *               songs:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     songNum:
+ *                       type: integer
+ *                     audioId:
+ *                       type: integer
+ *                     streamUrl:
+ *                       type: string
+ *                     stageDirectionId:
+ *                       type: integer
+ *               accessories:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *               maxAudience:
+ *                 type: integer
+ *                 default: 100
+ *     responses:
+ *       200:
+ *         description: 콘서트 생성 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 인증 실패
+ */
+/**
  * POST /api/concert/create
  * 콘서트 생성 (스튜디오 사용자)
  *
@@ -100,13 +150,35 @@ router.post('/create', verifyToken, async (req, res) => {
 });
 
 /**
- * GET /api/concert/list
- * 활성 콘서트 목록 조회
- *
- * Response:
- * - success: true/false
- * - count: 콘서트 개수
- * - concerts: 콘서트 목록 배열
+ * @swagger
+ * /api/concert/list:
+ *   get:
+ *     summary: 활성 콘서트 목록 조회
+ *     description: 현재 진행 중인 모든 콘서트 목록을 조회합니다
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 콘서트 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 count:
+ *                   type: integer
+ *                 concerts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
  */
 router.get('/list', verifyToken, async (req, res) => {
   try {
@@ -130,16 +202,43 @@ router.get('/list', verifyToken, async (req, res) => {
 });
 
 /**
- * POST /api/concert/:roomId/join
- * 콘서트 참가
- * (리슨 서버가 클라이언트 접속 시 호출)
- *
- * Request Body:
- * - clientId: 참가한 클라이언트의 사용자 ID
- * 
- * Response:
- * - success: true/false
- * - message: 메시지
+ * @swagger
+ * /api/concert/{roomId}/join:
+ *   post:
+ *     summary: 콘서트 참가
+ *     description: 클라이언트를 콘서트에 참가시킵니다 (리슨 서버가 클라이언트 접속 시 호출)
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 콘서트 방 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - clientId
+ *             properties:
+ *               clientId:
+ *                 type: integer
+ *                 description: 참가한 클라이언트의 사용자 ID
+ *     responses:
+ *       200:
+ *         description: 참가 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 권한 없음 (스튜디오 리슨 서버만 호출 가능)
+ *       401:
+ *         description: 인증 실패
  */
 router.post('/:roomId/join', verifyToken, async (req, res) => {
   try {
@@ -184,16 +283,43 @@ router.post('/:roomId/join', verifyToken, async (req, res) => {
 });
 
 /**
- * POST /api/concert/:roomId/leave
- * 콘서트 퇴장
- * (리슨 서버가 클라이언트 접속 종료 시 호출)
- *
- * Request Body:
- * - clientId: 퇴장한 클라이언트의 사용자 ID
- *
- * Response:
- * - success: true/false
- * - message: 메시지
+ * @swagger
+ * /api/concert/{roomId}/leave:
+ *   post:
+ *     summary: 콘서트 퇴장
+ *     description: 클라이언트를 콘서트에서 퇴장시킵니다 (리슨 서버가 클라이언트 접속 종료 시 호출)
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 콘서트 방 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - clientId
+ *             properties:
+ *               clientId:
+ *                 type: integer
+ *                 description: 퇴장한 클라이언트의 사용자 ID
+ *     responses:
+ *       200:
+ *         description: 퇴장 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 권한 없음 (스튜디오 리슨 서버만 호출 가능)
+ *       401:
+ *         description: 인증 실패
  */
 router.post('/:roomId/leave', verifyToken, async (req, res) => {
   try {
@@ -229,12 +355,38 @@ router.post('/:roomId/leave', verifyToken, async (req, res) => {
 });
 
 /**
- * GET /api/concert/:roomId/info
- * 콘서트 정보 조회
- *
- * Response:
- * - success: true/false
- * - concert: 콘서트 정보
+ * @swagger
+ * /api/concert/{roomId}/info:
+ *   get:
+ *     summary: 콘서트 정보 조회
+ *     description: 특정 콘서트의 상세 정보를 조회합니다
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 콘서트 방 ID
+ *     responses:
+ *       200:
+ *         description: 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 concert:
+ *                   type: object
+ *       404:
+ *         description: 콘서트를 찾을 수 없음
+ *       401:
+ *         description: 인증 실패
  */
 router.get('/:roomId/info', verifyToken, async (req, res) => {
   try {
@@ -257,14 +409,51 @@ router.get('/:roomId/info', verifyToken, async (req, res) => {
 });
 
 /**
- * POST /api/concert/:roomId/songs/add
- * 콘서트에 노래 추가 (스튜디오만 가능)
- *
- * Request Body:
- * - songNum: 노래 번호
- * - audioId: 음악 ID
- * - streamUrl: 스트림 URL
- * - stageDirectionId: 무대 연출 ID
+ * @swagger
+ * /api/concert/{roomId}/songs/add:
+ *   post:
+ *     summary: 콘서트에 노래 추가
+ *     description: 콘서트 플레이리스트에 노래를 추가합니다 (스튜디오만 가능)
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 콘서트 방 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - songNum
+ *               - audioId
+ *               - streamUrl
+ *               - stageDirectionId
+ *             properties:
+ *               songNum:
+ *                 type: integer
+ *               audioId:
+ *                 type: integer
+ *               streamUrl:
+ *                 type: string
+ *               stageDirectionId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: 노래 추가 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 권한 없음 (스튜디오만 가능)
+ *       401:
+ *         description: 인증 실패
  */
 router.post('/:roomId/songs/add', verifyToken, async (req, res) => {
   try {
@@ -312,8 +501,37 @@ router.post('/:roomId/songs/add', verifyToken, async (req, res) => {
 });
 
 /**
- * DELETE /api/concert/:roomId/songs/:songNum
- * 콘서트에서 노래 삭제 (스튜디오만 가능)
+ * @swagger
+ * /api/concert/{roomId}/songs/{songNum}:
+ *   delete:
+ *     summary: 콘서트에서 노래 삭제
+ *     description: 콘서트 플레이리스트에서 노래를 삭제합니다 (스튜디오만 가능)
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 콘서트 방 ID
+ *       - in: path
+ *         name: songNum
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 노래 번호
+ *     responses:
+ *       200:
+ *         description: 노래 삭제 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 권한 없음 (스튜디오만 가능)
+ *       401:
+ *         description: 인증 실패
  */
 router.delete('/:roomId/songs/:songNum', verifyToken, async (req, res) => {
   try {
@@ -351,11 +569,43 @@ router.delete('/:roomId/songs/:songNum', verifyToken, async (req, res) => {
 });
 
 /**
- * POST /api/concert/:roomId/songs/change
- * 현재 재생 곡 변경 (스튜디오만 가능)
- *
- * Request Body:
- * - songNum: 재생할 노래 번호
+ * @swagger
+ * /api/concert/{roomId}/songs/change:
+ *   post:
+ *     summary: 현재 재생 곡 변경
+ *     description: 콘서트에서 재생할 곡을 변경합니다 (스튜디오만 가능)
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 콘서트 방 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - songNum
+ *             properties:
+ *               songNum:
+ *                 type: integer
+ *                 description: 재생할 노래 번호
+ *     responses:
+ *       200:
+ *         description: 곡 변경 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 권한 없음 (스튜디오만 가능)
+ *       401:
+ *         description: 인증 실패
  */
 router.post('/:roomId/songs/change', verifyToken, async (req, res) => {
   try {
@@ -401,8 +651,40 @@ router.post('/:roomId/songs/change', verifyToken, async (req, res) => {
 });
 
 /**
- * GET /api/concert/:roomId/current-song
- * 현재 재생 중인 노래 정보 조회 (참가자 전용)
+ * @swagger
+ * /api/concert/{roomId}/current-song:
+ *   get:
+ *     summary: 현재 재생 중인 노래 정보 조회
+ *     description: 콘서트에서 현재 재생 중인 노래 정보를 조회합니다 (참가자 전용)
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 콘서트 방 ID
+ *     responses:
+ *       200:
+ *         description: 현재 곡 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 currentSong:
+ *                   type: object
+ *       403:
+ *         description: 접근 권한 없음
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
  */
 router.get('/:roomId/current-song', verifyToken, async (req, res) => {
   try {
@@ -437,14 +719,65 @@ router.get('/:roomId/current-song', verifyToken, async (req, res) => {
 });
 
 /**
- * POST /api/concert/:roomId/accessories/add
- * 액세서리 추가 (스튜디오만 가능)
- *
- * Request Body:
- * - socketName: 소켓 이름
- * - relativeLocation: 상대적 위치 { x, y, z }
- * - relativeRotation: 상대적 회전 { pitch, yaw, roll }
- * - modelUrl: 모델 URL
+ * @swagger
+ * /api/concert/{roomId}/accessories/add:
+ *   post:
+ *     summary: 액세서리 추가
+ *     description: 콘서트에 액세서리를 추가합니다 (스튜디오만 가능)
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 콘서트 방 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - socketName
+ *               - relativeLocation
+ *               - relativeRotation
+ *               - modelUrl
+ *             properties:
+ *               socketName:
+ *                 type: string
+ *               relativeLocation:
+ *                 type: object
+ *                 properties:
+ *                   x:
+ *                     type: number
+ *                   y:
+ *                     type: number
+ *                   z:
+ *                     type: number
+ *               relativeRotation:
+ *                 type: object
+ *                 properties:
+ *                   pitch:
+ *                     type: number
+ *                   yaw:
+ *                     type: number
+ *                   roll:
+ *                     type: number
+ *               modelUrl:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 액세서리 추가 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 권한 없음 (스튜디오만 가능)
+ *       401:
+ *         description: 인증 실패
  */
 router.post('/:roomId/accessories/add', verifyToken, async (req, res) => {
   try {
@@ -496,8 +829,37 @@ router.post('/:roomId/accessories/add', verifyToken, async (req, res) => {
 });
 
 /**
- * DELETE /api/concert/:roomId/accessories/:index
- * 액세서리 삭제 (스튜디오만 가능)
+ * @swagger
+ * /api/concert/{roomId}/accessories/{index}:
+ *   delete:
+ *     summary: 액세서리 삭제
+ *     description: 콘서트에서 액세서리를 삭제합니다 (스튜디오만 가능)
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 콘서트 방 ID
+ *       - in: path
+ *         name: index
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 액세서리 인덱스
+ *     responses:
+ *       200:
+ *         description: 액세서리 삭제 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 권한 없음 (스튜디오만 가능)
+ *       401:
+ *         description: 인증 실패
  */
 router.delete('/:roomId/accessories/:index', verifyToken, async (req, res) => {
   try {
@@ -534,11 +896,53 @@ router.delete('/:roomId/accessories/:index', verifyToken, async (req, res) => {
 });
 
 /**
- * PUT /api/concert/:roomId/accessories
- * 모든 액세서리 교체 (스튜디오만 가능)
- *
- * Request Body:
- * - accessories: 액세서리 배열 [{ socketName, relativeLocation, relativeRotation, modelUrl }]
+ * @swagger
+ * /api/concert/{roomId}/accessories:
+ *   put:
+ *     summary: 모든 액세서리 교체
+ *     description: 콘서트의 액세서리를 전체 교체합니다 (스튜디오만 가능)
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 콘서트 방 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - accessories
+ *             properties:
+ *               accessories:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     socketName:
+ *                       type: string
+ *                     relativeLocation:
+ *                       type: object
+ *                     relativeRotation:
+ *                       type: object
+ *                     modelUrl:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: 액세서리 교체 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 권한 없음 (스튜디오만 가능)
+ *       401:
+ *         description: 인증 실패
  */
 router.put('/:roomId/accessories', verifyToken, async (req, res) => {
   try {
@@ -584,14 +988,55 @@ router.put('/:roomId/accessories', verifyToken, async (req, res) => {
 });
 
 /**
- * POST /api/concert/:roomId/listen-server
- * 리슨 서버 정보 등록/업데이트 (스튜디오만 가능)
- *
- * Request Body:
- * - localIP: 로컬 IP 주소 (예: 192.168.0.100)
- * - port: 포트 번호 (예: 7777)
- * - publicIP: 공인 IP 주소 (optional, 외부 접속용)
- * - publicPort: 공인 포트 번호 (optional, 외부 접속용)
+ * @swagger
+ * /api/concert/{roomId}/listen-server:
+ *   post:
+ *     summary: 리슨 서버 정보 등록/업데이트
+ *     description: 콘서트의 리슨 서버 정보를 등록하거나 업데이트합니다 (스튜디오만 가능)
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 콘서트 방 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - localIP
+ *               - port
+ *             properties:
+ *               localIP:
+ *                 type: string
+ *                 description: 로컬 IP 주소
+ *                 example: "192.168.0.100"
+ *               port:
+ *                 type: integer
+ *                 description: 포트 번호
+ *                 example: 7777
+ *               publicIP:
+ *                 type: string
+ *                 description: 공인 IP 주소 (선택)
+ *               publicPort:
+ *                 type: integer
+ *                 description: 공인 포트 번호 (선택)
+ *     responses:
+ *       200:
+ *         description: 리슨 서버 정보 등록 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 권한 없음 (스튜디오만 가능)
+ *       401:
+ *         description: 인증 실패
  */
 router.post('/:roomId/listen-server', verifyToken, async (req, res) => {
   try {
@@ -643,11 +1088,43 @@ router.post('/:roomId/listen-server', verifyToken, async (req, res) => {
 });
 
 /**
- * POST /api/concert/:roomId/toggle-open
- * 콘서트 개방/비공개 상태 토글 (스튜디오만 가능)
- *
- * Request Body:
- * - isOpen: 개방 여부 (true: 개방, false: 비공개)
+ * @swagger
+ * /api/concert/{roomId}/toggle-open:
+ *   post:
+ *     summary: 콘서트 개방/비공개 상태 토글
+ *     description: 콘서트의 개방 여부를 변경합니다 (스튜디오만 가능)
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 콘서트 방 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - isOpen
+ *             properties:
+ *               isOpen:
+ *                 type: boolean
+ *                 description: 개방 여부 (true - 개방, false - 비공개)
+ *     responses:
+ *       200:
+ *         description: 상태 변경 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 권한 없음 (스튜디오만 가능)
+ *       401:
+ *         description: 인증 실패
  */
 router.post('/:roomId/toggle-open', verifyToken, async (req, res) => {
   try {

@@ -1,3 +1,39 @@
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     AudioFile:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         title:
+ *           type: string
+ *           example: "Sample Track 1"
+ *         artist:
+ *           type: string
+ *           nullable: true
+ *           example: "Artist A"
+ *         file_path:
+ *           type: string
+ *           example: "audio/sample1.m4a"
+ *         file_size:
+ *           type: integer
+ *           example: 3145728
+ *         duration:
+ *           type: integer
+ *           nullable: true
+ *           description: 재생 시간 (초)
+ *           example: 180
+ *         format:
+ *           type: string
+ *           example: "m4a"
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ */
+
 const express = require('express');
 const pool = require('../db');
 const verifyToken = require('../middleware/auth');
@@ -99,6 +135,39 @@ router.use(verifyToken);
 // 공용 음원 API (JWT 인증 필요 - 로그인한 유저만 접근)
 // ============================================
 
+/**
+ * @swagger
+ * /api/audio/list:
+ *   get:
+ *     summary: 음원 목록 조회
+ *     description: 모든 음원 파일 목록을 조회합니다 (공용 리소스, JWT 인증 필요)
+ *     tags:
+ *       - Audio
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 음원 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 count:
+ *                   type: integer
+ *                   example: 3
+ *                 audio_files:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/AudioFile'
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
 // 1. 음원 목록 조회 (모든 유저 접근 가능)
 router.get('/list', async (req, res) => {
     try {
@@ -143,6 +212,61 @@ router.get('/list', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/audio/stream/{id}:
+ *   get:
+ *     summary: 음원 스트리밍 URL 획득
+ *     description: 음원 스트리밍 URL을 반환합니다 (S3 환경에서는 Presigned URL, 로컬 환경에서는 내부 URL 제공)
+ *     tags:
+ *       - Audio
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 음원 ID
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: 스트리밍 URL 생성 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 stream_url:
+ *                   type: string
+ *                   description: 스트리밍 URL (S3 Presigned URL 또는 로컬 URL)
+ *                   example: "https://bucket.s3.amazonaws.com/audio/file.aac?X-Amz-Signature=..."
+ *                 audio_file:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     format:
+ *                       type: string
+ *                     file_size:
+ *                       type: integer
+ *                 expires_in:
+ *                   type: integer
+ *                   description: URL 유효 시간 (초, S3만 해당)
+ *                   example: 3600
+ *       404:
+ *         description: 음원을 찾을 수 없음
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
 // 2. 음원 스트리밍 URL 획득 (S3: Presigned URL, 로컬: 내부 URL)
 router.get('/stream/:id', async (req, res) => {
     try {
@@ -251,6 +375,44 @@ router.get('/stream/:id', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/audio/file/{id}:
+ *   get:
+ *     summary: 로컬 음원 파일 직접 스트리밍
+ *     description: 로컬 스토리지에서 음원 파일을 직접 스트리밍합니다 (Range Request 지원)
+ *     tags:
+ *       - Audio
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 음원 ID
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: 전체 파일 스트리밍
+ *         content:
+ *           audio/*:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       206:
+ *         description: 부분 콘텐츠 (Range Request)
+ *         headers:
+ *           Content-Range:
+ *             schema:
+ *               type: string
+ *             description: 바이트 범위
+ *       404:
+ *         description: 음원을 찾을 수 없음
+ *       401:
+ *         description: 인증 실패
+ */
 // 3. 로컬 파일 직접 스트리밍 (Range Request 지원)
 router.get('/file/:id', async (req, res) => {
     try {
@@ -324,6 +486,65 @@ router.get('/file/:id', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/audio/upload:
+ *   post:
+ *     summary: 음원 파일 업로드
+ *     description: 음원 파일을 업로드합니다 (AAC, M4A, MP3, WAV 지원, 최대 100MB)
+ *     tags:
+ *       - Audio
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - audio
+ *               - title
+ *             properties:
+ *               audio:
+ *                 type: string
+ *                 format: binary
+ *                 description: 음원 파일 (AAC, M4A, MP3, WAV)
+ *               title:
+ *                 type: string
+ *                 description: 음원 제목
+ *                 example: "Sample Track"
+ *               artist:
+ *                 type: string
+ *                 description: 아티스트 이름 (선택)
+ *                 example: "Artist Name"
+ *               duration:
+ *                 type: number
+ *                 description: 재생 시간 (초, 선택)
+ *                 example: 180
+ *     responses:
+ *       201:
+ *         description: 음원 업로드 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Audio file uploaded successfully"
+ *                 audio_file:
+ *                   $ref: '#/components/schemas/AudioFile'
+ *       400:
+ *         description: 잘못된 요청 (파일 또는 제목 누락)
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
 // 4. 음원 업로드
 router.post('/upload', upload.single('audio'), async (req, res) => {
     try {
@@ -427,6 +648,47 @@ router.post('/upload', upload.single('audio'), async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/audio/search/{query}:
+ *   get:
+ *     summary: 음원 검색
+ *     description: 제목 또는 아티스트로 음원을 검색합니다
+ *     tags:
+ *       - Audio
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: query
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 검색 키워드 (제목 또는 아티스트)
+ *         example: "sample"
+ *     responses:
+ *       200:
+ *         description: 검색 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 count:
+ *                   type: integer
+ *                   example: 2
+ *                 audio_files:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/AudioFile'
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
 // 5. 음원 검색 (제목 또는 아티스트)
 router.get('/search/:query', async (req, res) => {
     try {
@@ -478,6 +740,44 @@ router.get('/search/:query', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/audio/{id}:
+ *   get:
+ *     summary: 특정 음원 정보 조회
+ *     description: 음원 ID로 상세 정보를 조회합니다
+ *     tags:
+ *       - Audio
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 음원 ID
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: 음원 정보 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 audio_file:
+ *                   $ref: '#/components/schemas/AudioFile'
+ *       404:
+ *         description: 음원을 찾을 수 없음
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
 // 6. 특정 음원 정보 조회 (반드시 맨 마지막에 위치해야 함 - :id가 다른 경로를 가로채지 않도록)
 router.get('/:id', async (req, res) => {
     try {

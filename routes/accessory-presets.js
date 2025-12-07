@@ -10,6 +10,46 @@ const {
 } = require('../services/accessory-preset-service');
 
 /**
+ * @swagger
+ * /api/presets/save:
+ *   post:
+ *     summary: 액세서리 프리셋 저장
+ *     description: 아바타 액세서리 프리셋을 저장합니다
+ *     tags:
+ *       - Accessory Presets
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - presetName
+ *               - accessories
+ *             properties:
+ *               presetName:
+ *                 type: string
+ *                 example: "My Preset"
+ *               accessories:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *               description:
+ *                 type: string
+ *               isPublic:
+ *                 type: boolean
+ *                 default: false
+ *     responses:
+ *       200:
+ *         description: 프리셋 저장 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       401:
+ *         description: 인증 실패
+ */
+/**
  * POST /api/presets/save
  * 액세서리 프리셋 저장
  *
@@ -77,11 +117,42 @@ router.post('/save', verifyToken, async (req, res) => {
 });
 
 /**
- * GET /api/presets/list
- * 프리셋 목록 조회
- *
- * Query Parameters:
- * - includePublic: 공개 프리셋 포함 여부 (optional, default: false)
+ * @swagger
+ * /api/presets/list:
+ *   get:
+ *     summary: 프리셋 목록 조회
+ *     description: 사용자의 액세서리 프리셋 목록을 조회합니다
+ *     tags:
+ *       - Accessory Presets
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: includePublic
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: 공개 프리셋 포함 여부
+ *     responses:
+ *       200:
+ *         description: 프리셋 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 count:
+ *                   type: integer
+ *                 presets:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
  */
 router.get('/list', verifyToken, async (req, res) => {
   try {
@@ -107,8 +178,42 @@ router.get('/list', verifyToken, async (req, res) => {
 });
 
 /**
- * GET /api/presets/:id
- * 프리셋 상세 조회 (액세서리 데이터 포함)
+ * @swagger
+ * /api/presets/{id}:
+ *   get:
+ *     summary: 프리셋 상세 조회
+ *     description: 특정 프리셋의 상세 정보를 조회합니다 (액세서리 데이터 포함)
+ *     tags:
+ *       - Accessory Presets
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 프리셋 ID
+ *     responses:
+ *       200:
+ *         description: 프리셋 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 preset:
+ *                   type: object
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 접근 권한 없음
+ *       404:
+ *         description: 프리셋을 찾을 수 없음
+ *       401:
+ *         description: 인증 실패
  */
 router.get('/:id', verifyToken, async (req, res) => {
   try {
@@ -158,14 +263,51 @@ router.get('/:id', verifyToken, async (req, res) => {
 });
 
 /**
- * PUT /api/presets/:id
- * 프리셋 업데이트
- *
- * Request Body:
- * - presetName: 프리셋 이름 (optional)
- * - description: 설명 (optional)
- * - accessories: 액세서리 배열 (optional)
- * - isPublic: 공개 여부 (optional)
+ * @swagger
+ * /api/presets/{id}:
+ *   put:
+ *     summary: 프리셋 업데이트
+ *     description: 프리셋 정보를 업데이트합니다
+ *     tags:
+ *       - Accessory Presets
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 프리셋 ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               presetName:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               accessories:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *               isPublic:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: 프리셋 업데이트 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 접근 권한 없음
+ *       404:
+ *         description: 프리셋을 찾을 수 없음
+ *       409:
+ *         description: 중복된 프리셋 이름
+ *       401:
+ *         description: 인증 실패
  */
 router.put('/:id', verifyToken, async (req, res) => {
   try {
@@ -241,8 +383,42 @@ router.put('/:id', verifyToken, async (req, res) => {
 });
 
 /**
- * DELETE /api/presets/:id
- * 프리셋 삭제
+ * @swagger
+ * /api/presets/{id}:
+ *   delete:
+ *     summary: 프리셋 삭제
+ *     description: 프리셋을 삭제합니다
+ *     tags:
+ *       - Accessory Presets
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 프리셋 ID
+ *     responses:
+ *       200:
+ *         description: 프리셋 삭제 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 접근 권한 없음
+ *       404:
+ *         description: 프리셋을 찾을 수 없음
+ *       401:
+ *         description: 인증 실패
  */
 router.delete('/:id', verifyToken, async (req, res) => {
   try {

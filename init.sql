@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS user_models (
     file_path VARCHAR(500) NOT NULL,
     file_size BIGINT,
     thumbnail_path VARCHAR(500),
+    is_ai_generated BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, model_name)
@@ -38,6 +39,8 @@ CREATE INDEX IF NOT EXISTS idx_audio_files_title ON audio_files(title);
 CREATE INDEX IF NOT EXISTS idx_audio_files_artist ON audio_files(artist);
 CREATE INDEX IF NOT EXISTS idx_user_models_user_id ON user_models(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_models_name ON user_models(model_name);
+CREATE INDEX IF NOT EXISTS idx_user_models_is_ai ON user_models(is_ai_generated);
+CREATE INDEX IF NOT EXISTS idx_user_models_user_is_ai ON user_models(user_id, is_ai_generated);
 
 -- ============================================
 -- Trigger: auto-update updated_at

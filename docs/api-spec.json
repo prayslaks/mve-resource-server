@@ -1,0 +1,911 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "MVE Resource Server API",
+    "version": "1.0.0",
+    "description": "MVE (Meta Virtual Environment) Resource Server API\n\n이 API는 다음 기능을 제공합니다:\n- 🎵 음원 파일 관리 (스트리밍, 업로드, 검색)\n- 🎨 3D 모델 파일 관리 (GLB)\n- 🤖 AI 기반 3D 모델 생성\n- 🎭 아바타 악세서리 프리셋 관리\n- 🎪 콘서트 세션 관리\n\n**인증**: 모든 API는 JWT Bearer 토큰 인증이 필요합니다.\n**토큰 발급**: [MVE Login Server](https://github.com/prayslaks/mve-login-server)에서 로그인하여 JWT 토큰을 발급받으세요.",
+    "contact": {
+      "name": "MVE Development Team",
+      "url": "https://github.com/prayslaks"
+    },
+    "license": {
+      "name": "ISC",
+      "url": "https://opensource.org/licenses/ISC"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "로컬 개발 서버"
+    },
+    {
+      "url": "http://your-ec2-public-ip",
+      "description": "AWS EC2 프로덕션 서버 (HTTP)"
+    },
+    {
+      "url": "https://your-domain.com",
+      "description": "AWS EC2 프로덕션 서버 (HTTPS)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Audio",
+      "description": "음원 파일 관리 API (공용 리소스, JWT 인증 필요)"
+    },
+    {
+      "name": "Models",
+      "description": "3D 모델 파일 관리 API (개인 소유, JWT 인증 필요)"
+    },
+    {
+      "name": "AI Generation",
+      "description": "AI 기반 3D 모델 생성 API"
+    },
+    {
+      "name": "Accessory Presets",
+      "description": "아바타 악세서리 프리셋 관리 API"
+    },
+    {
+      "name": "Concert",
+      "description": "콘서트 세션 관리 API"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "MVE Login Server에서 발급받은 JWT 토큰을 입력하세요."
+      }
+    },
+    "schemas": {
+      "AudioFile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "example": "Sample Track 1"
+          },
+          "artist": {
+            "type": "string",
+            "nullable": true,
+            "example": "Artist A"
+          },
+          "file_path": {
+            "type": "string",
+            "example": "audio/sample1.m4a"
+          },
+          "file_size": {
+            "type": "integer",
+            "example": 3145728
+          },
+          "duration": {
+            "type": "integer",
+            "nullable": true,
+            "description": "재생 시간 (초)",
+            "example": 180
+          },
+          "format": {
+            "type": "string",
+            "example": "m4a"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ModelInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "model_name": {
+            "type": "string",
+            "example": "My Avatar"
+          },
+          "file_path": {
+            "type": "string",
+            "example": "models/user1/avatar.glb"
+          },
+          "file_size": {
+            "type": "integer",
+            "example": 5242880
+          },
+          "thumbnail_path": {
+            "type": "string",
+            "nullable": true,
+            "example": "models/user1/avatar_thumb.jpg"
+          },
+          "is_ai_generated": {
+            "type": "boolean",
+            "example": false,
+            "description": "AI로 생성된 모델 여부 (true: AI 생성, false: 직접 업로드)"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AIJobStatus": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processing",
+              "completed",
+              "failed"
+            ]
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "model_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "download_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "error_message": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/presets/save": {
+      "post": {
+        "summary": "액세서리 프리셋 저장",
+        "description": "아바타 액세서리 프리셋을 저장합니다",
+        "tags": [
+          "Accessory Presets"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "presetName",
+                  "accessories"
+                ],
+                "properties": {
+                  "presetName": {
+                    "type": "string",
+                    "example": "My Preset"
+                  },
+                  "accessories": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "isPublic": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "프리셋 저장 성공"
+          },
+          "400": {
+            "description": "잘못된 요청"
+          },
+          "401": {
+            "description": "인증 실패"
+          }
+        }
+      }
+    },
+    "/api/audio/list": {
+      "get": {
+        "summary": "음원 목록 조회",
+        "description": "모든 음원 파일 목록을 조회합니다 (공용 리소스, JWT 인증 필요)",
+        "tags": [
+          "Audio"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "음원 목록 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "count": {
+                      "type": "integer",
+                      "example": 3
+                    },
+                    "audio_files": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AudioFile"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패"
+          },
+          "500": {
+            "description": "서버 오류"
+          }
+        }
+      }
+    },
+    "/api/audio/stream/{id}": {
+      "get": {
+        "summary": "음원 스트리밍 URL 획득",
+        "description": "음원 스트리밍 URL을 반환합니다 (S3 환경에서는 Presigned URL, 로컬 환경에서는 내부 URL 제공)",
+        "tags": [
+          "Audio"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "음원 ID",
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "스트리밍 URL 생성 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "stream_url": {
+                      "type": "string",
+                      "description": "스트리밍 URL (S3 Presigned URL 또는 로컬 URL)",
+                      "example": "https://bucket.s3.amazonaws.com/audio/file.aac?X-Amz-Signature=..."
+                    },
+                    "audio_file": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "format": {
+                          "type": "string"
+                        },
+                        "file_size": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "expires_in": {
+                      "type": "integer",
+                      "description": "URL 유효 시간 (초, S3만 해당)",
+                      "example": 3600
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패"
+          },
+          "404": {
+            "description": "음원을 찾을 수 없음"
+          },
+          "500": {
+            "description": "서버 오류"
+          }
+        }
+      }
+    },
+    "/api/audio/upload": {
+      "post": {
+        "summary": "음원 파일 업로드",
+        "description": "음원 파일을 업로드합니다 (AAC, M4A, MP3, WAV 지원, 최대 100MB)",
+        "tags": [
+          "Audio"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "audio",
+                  "title"
+                ],
+                "properties": {
+                  "audio": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "음원 파일 (AAC, M4A, MP3, WAV)"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "음원 제목",
+                    "example": "Sample Track"
+                  },
+                  "artist": {
+                    "type": "string",
+                    "description": "아티스트 이름 (선택)",
+                    "example": "Artist Name"
+                  },
+                  "duration": {
+                    "type": "number",
+                    "description": "재생 시간 (초, 선택)",
+                    "example": 180
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "음원 업로드 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Audio file uploaded successfully"
+                    },
+                    "audio_file": {
+                      "$ref": "#/components/schemas/AudioFile"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청 (파일 또는 제목 누락)"
+          },
+          "401": {
+            "description": "인증 실패"
+          },
+          "500": {
+            "description": "서버 오류"
+          }
+        }
+      }
+    },
+    "/api/concert/create": {
+      "post": {
+        "summary": "콘서트 생성",
+        "description": "콘서트 세션을 생성합니다 (스튜디오 사용자 전용)",
+        "tags": [
+          "Concert"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "concertName"
+                ],
+                "properties": {
+                  "concertName": {
+                    "type": "string",
+                    "example": "My Concert"
+                  },
+                  "songs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "songNum": {
+                          "type": "integer"
+                        },
+                        "audioId": {
+                          "type": "integer"
+                        },
+                        "streamUrl": {
+                          "type": "string"
+                        },
+                        "stageDirectionId": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "accessories": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "maxAudience": {
+                    "type": "integer",
+                    "default": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "콘서트 생성 성공"
+          },
+          "400": {
+            "description": "잘못된 요청"
+          },
+          "401": {
+            "description": "인증 실패"
+          }
+        }
+      }
+    },
+    "/api/models/generate": {
+      "post": {
+        "summary": "AI 3D 모델 생성 요청",
+        "description": "프롬프트 또는 이미지를 기반으로 AI가 3D 모델을 생성합니다. 비동기 처리되며 즉시 job_id를 반환합니다.",
+        "tags": [
+          "Models",
+          "AI Generation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "prompt"
+                ],
+                "properties": {
+                  "prompt": {
+                    "type": "string",
+                    "description": "3D 모델 생성 프롬프트",
+                    "example": "A futuristic robot warrior"
+                  },
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "참고 이미지 (선택, PNG/JPG/WEBP, 최대 10MB)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "AI 생성 요청 접수 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "AI generation request submitted successfully"
+                    },
+                    "job_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "example": "550e8400-e29b-41d4-a716-446655440000"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청 (프롬프트 누락)"
+          },
+          "401": {
+            "description": "인증 실패"
+          },
+          "500": {
+            "description": "서버 오류"
+          }
+        }
+      }
+    },
+    "/api/models/jobs/{job_id}": {
+      "get": {
+        "summary": "AI 작업 상태 조회",
+        "description": "AI 모델 생성 작업의 현재 상태를 조회합니다.",
+        "tags": [
+          "AI Generation"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "작업 ID",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "작업 상태 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AIJobStatus"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "권한 없음 (다른 사용자의 작업)"
+          },
+          "404": {
+            "description": "작업을 찾을 수 없음"
+          },
+          "500": {
+            "description": "서버 오류"
+          }
+        }
+      }
+    },
+    "/api/models/list": {
+      "get": {
+        "summary": "내 모델 목록 조회",
+        "description": "로그인한 사용자가 소유한 모든 3D 모델 목록을 조회합니다.",
+        "tags": [
+          "Models"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "모델 목록 조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "count": {
+                      "type": "integer",
+                      "example": 2
+                    },
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ModelInfo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패"
+          },
+          "500": {
+            "description": "서버 오류"
+          }
+        }
+      }
+    },
+    "/api/models/upload": {
+      "post": {
+        "summary": "모델 파일 업로드",
+        "description": "3D 모델 파일(GLB)과 선택적으로 썸네일 이미지를 업로드합니다.",
+        "tags": [
+          "Models"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "model"
+                ],
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "3D 모델 파일 (.glb)"
+                  },
+                  "thumbnail": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "썸네일 이미지 (선택)"
+                  },
+                  "model_name": {
+                    "type": "string",
+                    "description": "모델 이름 (선택, 미입력 시 파일명 사용)",
+                    "example": "My Character"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "모델 업로드 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Model uploaded successfully"
+                    },
+                    "model": {
+                      "$ref": "#/components/schemas/ModelInfo"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청 (모델 파일 누락)"
+          },
+          "401": {
+            "description": "인증 실패"
+          },
+          "500": {
+            "description": "서버 오류"
+          }
+        }
+      }
+    },
+    "/api/models/{id}/download": {
+      "get": {
+        "summary": "모델 파일 다운로드",
+        "description": "특정 모델의 GLB 파일을 다운로드합니다.",
+        "tags": [
+          "Models"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "모델 ID",
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "모델 파일 다운로드 성공",
+            "content": {
+              "model/gltf-binary": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패"
+          },
+          "404": {
+            "description": "모델을 찾을 수 없음"
+          },
+          "500": {
+            "description": "서버 오류"
+          }
+        }
+      }
+    },
+    "/api/models/{id}": {
+      "delete": {
+        "summary": "모델 삭제",
+        "description": "특정 모델을 DB와 파일 시스템에서 삭제합니다.",
+        "tags": [
+          "Models"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "모델 ID",
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "모델 삭제 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Model deleted successfully"
+                    },
+                    "deleted_model": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "model_name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패"
+          },
+          "404": {
+            "description": "모델을 찾을 수 없음"
+          },
+          "500": {
+            "description": "서버 오류"
+          }
+        }
+      }
+    }
+  }
+}

@@ -22,7 +22,7 @@ app.use(express.static('public'));
 
 // 라우트
 app.use('/api/audio', audioRoutes);                        // 공용 음원 API
-app.use('/api/models', modelRoutes);                       // 개인 모델 API (JWT 필요)
+app.use('/api/models', modelRoutes);                       // 개인 모델 API + AI 생성 (JWT 필요)
 app.use('/api/concert', concertRoutes);                    // 콘서트 API (JWT 필요)
 app.use('/api/accessory-presets', accessoryPresetRoutes);  // 액세서리 프리셋 API (JWT 필요)
 
@@ -87,7 +87,9 @@ app.get('/', (req, res) => {
             accessory_preset_list: 'GET /api/accessory-presets/list (requires JWT)',
             accessory_preset_get: 'GET /api/accessory-presets/:id (requires JWT)',
             accessory_preset_update: 'PUT /api/accessory-presets/:id (requires JWT)',
-            accessory_preset_delete: 'DELETE /api/accessory-presets/:id (requires JWT)'
+            accessory_preset_delete: 'DELETE /api/accessory-presets/:id (requires JWT)',
+            ai_generate: 'POST /api/models/generate (requires JWT, multipart/form-data with prompt and optional image)',
+            ai_job_status: 'GET /api/models/jobs/:job_id (requires JWT)'
         }
     });
 });

@@ -1,3 +1,70 @@
+/**
+ * @swagger
+ * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ *   schemas:
+ *     ModelInfo:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         model_name:
+ *           type: string
+ *           example: "My Avatar"
+ *         file_path:
+ *           type: string
+ *           example: "models/user1/avatar.glb"
+ *         file_size:
+ *           type: integer
+ *           example: 5242880
+ *         thumbnail_path:
+ *           type: string
+ *           nullable: true
+ *           example: "models/user1/avatar_thumb.jpg"
+ *         is_ai_generated:
+ *           type: boolean
+ *           example: false
+ *           description: "AI로 생성된 모델 여부 (true: AI 생성, false: 직접 업로드)"
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *     AIJobStatus:
+ *       type: object
+ *       properties:
+ *         job_id:
+ *           type: string
+ *           format: uuid
+ *         status:
+ *           type: string
+ *           enum: [queued, processing, completed, failed]
+ *         prompt:
+ *           type: string
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         completed_at:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         model_id:
+ *           type: integer
+ *           nullable: true
+ *         download_url:
+ *           type: string
+ *           nullable: true
+ *         error_message:
+ *           type: string
+ *           nullable: true
+ */
+
 const express = require('express');
 const pool = require('../db');
 const verifyToken = require('../middleware/auth');
@@ -79,10 +146,10 @@ router.post('/dev/upload-from-ai', uploadModelWithThumbnail.fields([
 
         // DB에 모델 정보 저장
         const result = await pool.query(
-            `INSERT INTO user_models (user_id, model_name, file_path, file_size, thumbnail_path)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING id, model_name, file_path, file_size, thumbnail_path, created_at`,
-            [user_id, model_name, file_path, modelFile.size, thumbnail_path]
+            `INSERT INTO user_models (user_id, model_name, file_path, file_size, thumbnail_path, is_ai_generated)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING id, model_name, file_path, file_size, thumbnail_path, is_ai_generated, created_at`,
+            [user_id, model_name, file_path, modelFile.size, thumbnail_path, false]
         );
 
         console.log('[DEV-AI-UPLOAD] SUCCESS:', {
@@ -133,6 +200,52 @@ router.post('/dev/upload-from-ai', uploadModelWithThumbnail.fields([
     }
 });
 
+/**
+ * @swagger
+ * /api/models/upload-from-ai:
+ *   post:
+ *     summary: AI 서버 모델 업로드
+ *     description: AI 서버에서 생성된 모델을 업로드합니다 (AI 서버 전용, Job ID 검증 필요)
+ *     tags:
+ *       - Models
+ *       - AI Generation
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - model
+ *               - job_id
+ *               - job_secret
+ *             properties:
+ *               model:
+ *                 type: string
+ *                 format: binary
+ *                 description: 모델 파일 (.glb)
+ *               thumbnail:
+ *                 type: string
+ *                 format: binary
+ *                 description: 썸네일 이미지 (선택)
+ *               job_id:
+ *                 type: string
+ *                 description: AI 작업 ID
+ *               job_secret:
+ *                 type: string
+ *                 description: AI 작업 Secret
+ *     responses:
+ *       201:
+ *         description: 모델 업로드 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       403:
+ *         description: 잘못된 job_secret
+ *       404:
+ *         description: Job을 찾을 수 없음
+ *       409:
+ *         description: Job이 이미 완료됨
+ */
 // AI 서버에서 생성된 모델 업로드
 router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
     { name: 'model', maxCount: 1 },
@@ -274,10 +387,10 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
 
         // DB에 모델 정보 저장
         const result = await pool.query(
-            `INSERT INTO user_models (user_id, model_name, file_path, file_size, thumbnail_path)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING id, model_name, file_path, file_size, thumbnail_path, created_at`,
-            [job.user_id, model_name, file_path, modelFile.size, thumbnail_path]
+            `INSERT INTO user_models (user_id, model_name, file_path, file_size, thumbnail_path, is_ai_generated)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING id, model_name, file_path, file_size, thumbnail_path, is_ai_generated, created_at`,
+            [job.user_id, model_name, file_path, modelFile.size, thumbnail_path, true]
         );
 
         // Redis 상태 업데이트: completed
@@ -361,206 +474,329 @@ router.use(verifyToken);
 // 개인 3D 모델 API (인증 필요)
 // ============================================
 
+/**
+ * @swagger
+ * /api/models/generate:
+ *   post:
+ *     summary: AI 3D 모델 생성 요청
+ *     description: 프롬프트 또는 이미지를 기반으로 AI가 3D 모델을 생성합니다. 비동기 처리되며 즉시 job_id를 반환합니다.
+ *     tags:
+ *       - Models
+ *       - AI Generation
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - prompt
+ *             properties:
+ *               prompt:
+ *                 type: string
+ *                 description: 3D 모델 생성 프롬프트
+ *                 example: "A futuristic robot warrior"
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: 참고 이미지 (선택, PNG/JPG/WEBP, 최대 10MB)
+ *     responses:
+ *       202:
+ *         description: AI 생성 요청 접수 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "AI generation request submitted successfully"
+ *                 job_id:
+ *                   type: string
+ *                   format: uuid
+ *                   example: "550e8400-e29b-41d4-a716-446655440000"
+ *       400:
+ *         description: 잘못된 요청 (프롬프트 누락)
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
 // 0-1. 모델 생성 요청 (AI 서버에 전달)
-router.post('/generate', uploadThumbnail.single('image'), async (req, res) => {
+// 0-1. AI 3D 모델 생성 요청
+// 언리얼 클라이언트에서 호출: /api/models/generate
+router.post('/generate', verifyToken, uploadThumbnail.single('image'), async (req, res) => {
     try {
         const { prompt } = req.body;
+        const userId = req.userId;
+        const userEmail = req.email;
 
-        console.log('[MODEL-GENERATE] 모델 생성 요청:', {
-            userId: req.userId,
-            email: req.email,
+        console.log('[MODEL-GENERATE:REQUEST] AI 모델 생성 요청:', {
+            userId,
+            userEmail,
             prompt,
             hasImage: !!req.file,
             timestamp: new Date().toISOString()
         });
 
-        // 입력값 검증
-        if (!prompt || typeof prompt !== 'string') {
-            console.log('[MODEL-GENERATE] ERROR: 유효하지 않은 프롬프트');
-
-            // 업로드된 이미지 삭제
+        // 프롬프트 검증
+        if (!prompt || prompt.trim().length === 0) {
             if (req.file) {
                 fs.unlink(req.file.path, err => {
-                    if (err) console.error('[MODEL-GENERATE] Failed to delete image:', err);
+                    if (err) console.error('[MODEL-GENERATE:VALIDATE] Failed to delete temp file:', err);
                 });
             }
 
             return res.status(400).json({
                 success: false,
                 error: 'INVALID_PROMPT',
-                message: 'Valid prompt is required'
+                message: 'Prompt is required and cannot be empty'
             });
         }
 
-        // 이미지 파일 검증 (.png만 허용)
-        if (!req.file) {
-            console.log('[MODEL-GENERATE] ERROR: 이미지 파일 누락');
-            return res.status(400).json({
-                success: false,
-                error: 'MISSING_IMAGE_FILE',
-                message: 'PNG image file is required'
-            });
-        }
-
-        const imageExt = path.extname(req.file.originalname).toLowerCase();
-        if (imageExt !== '.png') {
-            console.log('[MODEL-GENERATE] ERROR: PNG 파일이 아님:', imageExt);
-
-            // 업로드된 이미지 삭제
-            fs.unlink(req.file.path, err => {
-                if (err) console.error('[MODEL-GENERATE] Failed to delete image:', err);
-            });
-
-            return res.status(400).json({
-                success: false,
-                error: 'INVALID_IMAGE_TYPE',
-                message: 'Only PNG images are allowed'
-            });
-        }
-
-        // Job ID 및 Secret 생성
+        // Job ID 생성
         const job_id = crypto.randomUUID();
-        const job_secret = crypto.randomBytes(32).toString('hex');
 
-        // Redis에 Job 정보 저장 (TTL: 30분)
+        // Redis에 Job 정보 저장 (TTL: 1시간)
         const jobData = {
             job_id,
-            secret: job_secret,
-            user_id: req.userId,
-            email: req.email,
+            user_id: userId,
+            user_email: userEmail,
             prompt,
-            image_path: req.file.path,
-            status: 'pending',
+            status: 'queued',
             created_at: new Date().toISOString()
         };
 
-        const jobKey = `job:${job_id}`;
-        await redisClient.setEx(jobKey, 1800, JSON.stringify(jobData)); // 30분 TTL
+        const jobKey = `ai:job:${job_id}`;
+        await redisClient.hSet(jobKey, jobData);
+        await redisClient.expire(jobKey, 3600); // 1시간
 
-        console.log('[MODEL-GENERATE] Job created:', {
-            job_id,
-            userId: req.userId,
-            imagePath: req.file.path
+        // 사용자별 작업 목록에 추가
+        const userJobsKey = `ai:user_jobs:${userId}`;
+        await redisClient.sAdd(userJobsKey, job_id);
+        await redisClient.expire(userJobsKey, 86400); // 24시간
+
+        console.log(`[MODEL-GENERATE:QUEUED] Job ${job_id} created for user ${userId}`);
+
+        // 클라이언트에 즉시 응답 (비동기 처리)
+        res.status(202).json({
+            success: true,
+            message: 'AI generation request submitted successfully',
+            job_id: job_id
         });
 
-        // AI 서버에 비동기 요청 전송 (백그라운드)
-        const aiServerUrl = process.env.AI_SERVER_URL || 'http://localhost:8000';
-        const resourceServerUrl = process.env.RESOURCE_SERVER_URL || 'http://localhost:3001';
+        // 백그라운드에서 AI 서버 요청 처리 (긴 시간 소요)
+        const imagePath = req.file ? req.file.path : null;
 
-        // 백그라운드에서 AI 서버 요청
         (async () => {
             try {
                 // Redis 상태 업데이트: processing
-                jobData.status = 'processing';
-                jobData.processing_started_at = new Date().toISOString();
-                await redisClient.setEx(jobKey, 1800, JSON.stringify(jobData));
-
-                const FormData = require('form-data');
-                const fetch = (await import('node-fetch')).default;
-
-                // multipart/form-data 생성
-                const formData = new FormData();
-                formData.append('image', fs.createReadStream(req.file.path));
-                formData.append('prompt', prompt);
-                formData.append('job_id', job_id);
-                formData.append('job_secret', job_secret);
-                formData.append('callback_url', `${resourceServerUrl}/api/models/upload-from-ai`);
-
-                const response = await fetch(`${aiServerUrl}/generate_mesh`, {
-                    method: 'POST',
-                    body: formData,
-                    headers: formData.getHeaders(),
-                    timeout: parseInt(process.env.AI_SERVER_TIMEOUT) || 180000
+                await redisClient.hSet(jobKey, {
+                    status: 'processing',
+                    processing_started_at: new Date().toISOString()
                 });
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`AI server returned ${response.status}: ${errorText}`);
+                console.log(`[MODEL-GENERATE:PROCESSING] Job ${job_id} AI 서버 요청 시작`);
+
+                // AI 클라이언트로 요청 전송 (동기 응답 대기)
+                const aiClient = require('../services/ai-client');
+                const result = await aiClient.requestGeneration(prompt, userEmail, imagePath);
+
+                // 임시 이미지 파일 삭제
+                if (imagePath && fs.existsSync(imagePath)) {
+                    fs.unlinkSync(imagePath);
                 }
 
-                console.log('[MODEL-GENERATE] AI 서버 요청 성공:', { job_id });
+                if (!result.success) {
+                    console.error(`[MODEL-GENERATE:AI-FAILED] Job ${job_id} AI 서버 요청 실패:`, result);
 
-                // 이미지 파일 삭제 (AI 서버에 전송 완료)
-                fs.unlink(req.file.path, err => {
-                    if (err) console.error('[MODEL-GENERATE] Failed to delete image:', err);
-                    else console.log('[MODEL-GENERATE] Image file deleted:', req.file.path);
+                    await redisClient.hSet(jobKey, {
+                        status: 'failed',
+                        error_message: result.message || 'AI server request failed',
+                        completed_at: new Date().toISOString()
+                    });
+                    return;
+                }
+
+                // AI 서버 응답에서 GLB 파일 데이터 추출
+                // result.data는 AI 서버가 반환한 바이너리 또는 JSON 응답
+                console.log(`[MODEL-GENERATE:AI-SUCCESS] Job ${job_id} AI 서버 응답 수신`);
+
+                // S3 또는 로컬 저장
+                const isS3 = process.env.STORAGE_TYPE === 's3';
+                const modelFileName = `${job_id}.glb`;
+                let file_path;
+                let file_size;
+
+                if (isS3) {
+                    const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+                    const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+                    const { GetObjectCommand } = require('@aws-sdk/client-s3');
+
+                    const s3Client = new S3Client({ region: process.env.AWS_REGION });
+                    const s3Key = `models/ai-generated/${userId}/${modelFileName}`;
+
+                    // result.data가 바이너리 데이터인 경우
+                    const modelData = Buffer.isBuffer(result.data) ? result.data : Buffer.from(result.data);
+                    file_size = modelData.length;
+
+                    const uploadParams = {
+                        Bucket: process.env.S3_BUCKET,
+                        Key: s3Key,
+                        Body: modelData,
+                        ContentType: 'model/gltf-binary'
+                    };
+
+                    await s3Client.send(new PutObjectCommand(uploadParams));
+                    file_path = s3Key;
+
+                    console.log(`[MODEL-GENERATE:STORAGE] Job ${job_id} S3 업로드 완료: ${s3Key}`);
+                } else {
+                    // 로컬 저장
+                    const localDir = path.join(__dirname, '../files/models/ai-generated', userId.toString());
+                    if (!fs.existsSync(localDir)) {
+                        fs.mkdirSync(localDir, { recursive: true });
+                    }
+
+                    const localPath = path.join(localDir, modelFileName);
+                    const modelData = Buffer.isBuffer(result.data) ? result.data : Buffer.from(result.data);
+                    fs.writeFileSync(localPath, modelData);
+
+                    file_path = path.relative(path.join(__dirname, '..'), localPath).replace(/\\/g, '/');
+                    file_size = modelData.length;
+
+                    console.log(`[MODEL-GENERATE:STORAGE] Job ${job_id} 로컬 저장 완료: ${file_path}`);
+                }
+
+                // DB에 모델 정보 저장
+                const model_name = prompt.substring(0, 100);
+
+                const dbResult = await pool.query(
+                    `INSERT INTO user_models (user_id, model_name, file_path, file_size, thumbnail_path, is_ai_generated)
+                     VALUES ($1, $2, $3, $4, $5, $6)
+                     RETURNING id, model_name, file_path, file_size, is_ai_generated, created_at`,
+                    [userId, model_name, file_path, file_size, null, true]
+                );
+
+                const modelId = dbResult.rows[0].id;
+
+                console.log(`[MODEL-GENERATE:DB-SAVED] Job ${job_id} DB 저장 완료: model_id=${modelId}`);
+
+                // Presigned URL 생성 (S3) 또는 다운로드 URL (로컬)
+                let download_url;
+
+                if (isS3) {
+                    const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
+                    const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+
+                    const s3Client = new S3Client({ region: process.env.AWS_REGION });
+                    const command = new GetObjectCommand({
+                        Bucket: process.env.S3_BUCKET,
+                        Key: file_path
+                    });
+                    download_url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+                } else {
+                    download_url = `${process.env.RESOURCE_SERVER_URL || 'http://localhost:3001'}/api/models/${modelId}/download`;
+                }
+
+                // Redis job 상태 업데이트: completed
+                await redisClient.hSet(jobKey, {
+                    status: 'completed',
+                    completed_at: new Date().toISOString(),
+                    model_id: modelId.toString(),
+                    download_url: download_url
                 });
+
+                console.log(`[MODEL-GENERATE:COMPLETED] Job ${job_id} 전체 처리 완료`);
 
             } catch (error) {
-                console.error('[MODEL-GENERATE] AI 서버 요청 실패:', {
-                    job_id,
-                    error: error.message
-                });
+                console.error(`[MODEL-GENERATE:ERROR] Job ${job_id} 백그라운드 처리 실패:`, error);
+
+                // 임시 파일 정리
+                if (imagePath && fs.existsSync(imagePath)) {
+                    fs.unlinkSync(imagePath);
+                }
 
                 // Redis 상태 업데이트: failed
-                try {
-                    const currentJobData = await redisClient.get(jobKey);
-                    if (currentJobData) {
-                        const job = JSON.parse(currentJobData);
-                        job.status = 'failed';
-                        job.error = `AI server error: ${error.message}`;
-                        await redisClient.setEx(jobKey, 1800, JSON.stringify(job));
-                    }
-                } catch (redisError) {
-                    console.error('[MODEL-GENERATE] Redis 업데이트 실패:', redisError);
-                }
-
-                // 이미지 파일 삭제 (에러 발생 시)
-                if (req.file && req.file.path) {
-                    fs.unlink(req.file.path, err => {
-                        if (err) console.error('[MODEL-GENERATE] Failed to delete image:', err);
-                    });
-                }
+                await redisClient.hSet(jobKey, {
+                    status: 'failed',
+                    error_message: error.message || 'Background processing failed',
+                    completed_at: new Date().toISOString()
+                });
             }
         })();
 
-        // 즉시 응답 반환
-        res.status(202).json({
-            success: true,
-            message: 'Model generation job created',
-            job_id,
-            status: 'pending'
-        });
-
     } catch (error) {
-        console.error('[MODEL-GENERATE] EXCEPTION:', {
-            message: error.message,
-            stack: error.stack,
-            timestamp: new Date().toISOString()
-        });
+        console.error('[MODEL-GENERATE:ERROR] 요청 처리 중 오류:', error);
 
-        // 업로드된 이미지 삭제 (에러 발생 시)
-        if (req.file && req.file.path) {
+        if (req.file && fs.existsSync(req.file.path)) {
             fs.unlink(req.file.path, err => {
-                if (err) console.error('[MODEL-GENERATE] Failed to delete image:', err);
+                if (err) console.error('[MODEL-GENERATE:ERROR] Failed to delete temp file:', err);
             });
         }
 
         res.status(500).json({
             success: false,
             error: 'INTERNAL_SERVER_ERROR',
-            message: 'Server error'
+            message: 'Failed to process AI generation request'
         });
     }
 });
 
-// 0-2. 작업 상태 조회 (폴링용)
-router.get('/jobs/:job_id', async (req, res) => {
+/**
+ * @swagger
+ * /api/models/jobs/{job_id}:
+ *   get:
+ *     summary: AI 작업 상태 조회
+ *     description: AI 모델 생성 작업의 현재 상태를 조회합니다.
+ *     tags:
+ *       - AI Generation
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: job_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: 작업 ID
+ *         example: "550e8400-e29b-41d4-a716-446655440000"
+ *     responses:
+ *       200:
+ *         description: 작업 상태 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/AIJobStatus'
+ *       403:
+ *         description: 권한 없음 (다른 사용자의 작업)
+ *       404:
+ *         description: 작업을 찾을 수 없음
+ *       500:
+ *         description: 서버 오류
+ */
+// 0-2. AI 작업 상태 조회
+router.get('/jobs/:job_id', verifyToken, async (req, res) => {
     try {
         const { job_id } = req.params;
+        const userId = req.userId;
 
-        console.log('[JOB-STATUS] 작업 상태 조회:', {
-            job_id,
-            userId: req.userId,
-            timestamp: new Date().toISOString()
-        });
+        const jobKey = `ai:job:${job_id}`;
+        const jobData = await redisClient.hGetAll(jobKey);
 
-        // Redis에서 Job 정보 조회
-        const jobKey = `job:${job_id}`;
-        const jobData = await redisClient.get(jobKey);
-
-        if (!jobData) {
-            console.log('[JOB-STATUS] ERROR: Job not found', { job_id });
+        if (!jobData || Object.keys(jobData).length === 0) {
             return res.status(404).json({
                 success: false,
                 error: 'JOB_NOT_FOUND',
@@ -568,60 +804,31 @@ router.get('/jobs/:job_id', async (req, res) => {
             });
         }
 
-        const job = JSON.parse(jobData);
-
-        // 소유권 확인
-        if (job.user_id !== req.userId) {
-            console.log('[JOB-STATUS] ERROR: 권한 없음', {
-                job_id,
-                job_user_id: job.user_id,
-                request_user_id: req.userId
-            });
+        // 작업 소유자 확인
+        if (parseInt(jobData.user_id) !== userId) {
             return res.status(403).json({
                 success: false,
-                error: 'ACCESS_DENIED',
-                message: 'Access denied to this job'
+                error: 'FORBIDDEN',
+                message: 'You do not have permission to view this job'
             });
         }
-
-        // Secret 제거 후 반환
-        const { secret, ...jobInfo } = job;
-
-        // 완료된 경우 모델 정보도 함께 반환
-        if (job.status === 'completed' && job.model_id) {
-            try {
-                const modelResult = await pool.query(
-                    `SELECT id, model_name, file_path, file_size, thumbnail_path, created_at
-                     FROM user_models
-                     WHERE id = $1 AND user_id = $2`,
-                    [job.model_id, req.userId]
-                );
-
-                if (modelResult.rows.length > 0) {
-                    jobInfo.model = modelResult.rows[0];
-                }
-            } catch (dbError) {
-                console.error('[JOB-STATUS] 모델 조회 실패:', dbError);
-            }
-        }
-
-        console.log('[JOB-STATUS] SUCCESS:', {
-            job_id,
-            status: job.status
-        });
 
         res.json({
             success: true,
-            job: jobInfo
+            data: {
+                job_id: job_id,
+                status: jobData.status,
+                prompt: jobData.prompt,
+                created_at: jobData.created_at,
+                completed_at: jobData.completed_at || null,
+                model_id: jobData.model_id || null,
+                download_url: jobData.download_url || null,
+                error_message: jobData.error_message || null
+            }
         });
 
     } catch (error) {
-        console.error('[JOB-STATUS] EXCEPTION:', {
-            message: error.message,
-            stack: error.stack,
-            timestamp: new Date().toISOString()
-        });
-
+        console.error('[JOB-STATUS] 조회 실패:', error);
         res.status(500).json({
             success: false,
             error: 'INTERNAL_SERVER_ERROR',
@@ -630,6 +837,43 @@ router.get('/jobs/:job_id', async (req, res) => {
     }
 });
 
+// ============================================
+// 일반 모델 API (인증 필요)
+// ============================================
+
+/**
+ * @swagger
+ * /api/models/list:
+ *   get:
+ *     summary: 내 모델 목록 조회
+ *     description: 로그인한 사용자가 소유한 모든 3D 모델 목록을 조회합니다.
+ *     tags:
+ *       - Models
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 모델 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 count:
+ *                   type: integer
+ *                   example: 2
+ *                 models:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ModelInfo'
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
 // 1. 내 모델 목록 조회 (자신의 모델만)
 router.get('/list', async (req, res) => {
     try {
@@ -640,7 +884,7 @@ router.get('/list', async (req, res) => {
         });
 
         const result = await pool.query(
-            `SELECT id, model_name, file_path, file_size, thumbnail_path, created_at, updated_at
+            `SELECT id, model_name, file_path, file_size, thumbnail_path, is_ai_generated, created_at, updated_at
              FROM user_models
              WHERE user_id = $1
              ORDER BY created_at DESC`,
@@ -683,6 +927,40 @@ router.get('/list', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/models/{id}:
+ *   get:
+ *     summary: 특정 모델 조회
+ *     description: 모델 ID로 특정 모델의 정보를 조회합니다 (자신의 모델만)
+ *     tags:
+ *       - Models
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 모델 ID
+ *     responses:
+ *       200:
+ *         description: 모델 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 model:
+ *                   $ref: '#/components/schemas/ModelInfo'
+ *       404:
+ *         description: 모델을 찾을 수 없음 또는 권한 없음
+ *       401:
+ *         description: 인증 실패
+ */
 // 2. 특정 모델 조회 (자신의 모델만)
 router.get('/:id', async (req, res) => {
     try {
@@ -695,7 +973,7 @@ router.get('/:id', async (req, res) => {
         });
 
         const result = await pool.query(
-            `SELECT id, model_name, file_path, file_size, thumbnail_path, created_at, updated_at
+            `SELECT id, model_name, file_path, file_size, thumbnail_path, is_ai_generated, created_at, updated_at
              FROM user_models
              WHERE id = $1 AND user_id = $2`,
             [id, req.userId]
@@ -748,6 +1026,60 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/models/upload:
+ *   post:
+ *     summary: 모델 파일 업로드
+ *     description: 3D 모델 파일(GLB)과 선택적으로 썸네일 이미지를 업로드합니다.
+ *     tags:
+ *       - Models
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - model
+ *             properties:
+ *               model:
+ *                 type: string
+ *                 format: binary
+ *                 description: 3D 모델 파일 (.glb)
+ *               thumbnail:
+ *                 type: string
+ *                 format: binary
+ *                 description: 썸네일 이미지 (선택)
+ *               model_name:
+ *                 type: string
+ *                 description: 모델 이름 (선택, 미입력 시 파일명 사용)
+ *                 example: "My Character"
+ *     responses:
+ *       201:
+ *         description: 모델 업로드 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Model uploaded successfully"
+ *                 model:
+ *                   $ref: '#/components/schemas/ModelInfo'
+ *       400:
+ *         description: 잘못된 요청 (모델 파일 누락)
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
 // 3-1. 모델 파일 업로드 (모델 파일 + 썸네일)
 router.post('/upload', uploadModelWithThumbnail.fields([
     { name: 'model', maxCount: 1 },
@@ -790,10 +1122,10 @@ router.post('/upload', uploadModelWithThumbnail.fields([
 
         // DB에 모델 정보 저장
         const result = await pool.query(
-            `INSERT INTO user_models (user_id, model_name, file_path, file_size, thumbnail_path)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING id, model_name, file_path, file_size, thumbnail_path, created_at`,
-            [req.userId, model_name, file_path, modelFile.size, thumbnail_path]
+            `INSERT INTO user_models (user_id, model_name, file_path, file_size, thumbnail_path, is_ai_generated)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING id, model_name, file_path, file_size, thumbnail_path, is_ai_generated, created_at`,
+            [req.userId, model_name, file_path, modelFile.size, thumbnail_path, false]
         );
 
         console.log('[MODEL-UPLOAD] SUCCESS:', {
@@ -861,6 +1193,49 @@ router.post('/upload', uploadModelWithThumbnail.fields([
     }
 });
 
+/**
+ * @swagger
+ * /api/models/{id}:
+ *   put:
+ *     summary: 모델 정보 수정
+ *     description: 모델의 정보를 수정합니다 (자신의 모델만)
+ *     tags:
+ *       - Models
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 모델 ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               model_name:
+ *                 type: string
+ *               file_path:
+ *                 type: string
+ *               file_size:
+ *                 type: integer
+ *               thumbnail_path:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 모델 수정 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       404:
+ *         description: 모델을 찾을 수 없음 또는 권한 없음
+ *       409:
+ *         description: 중복된 모델 이름
+ *       401:
+ *         description: 인증 실패
+ */
 // 4. 모델 수정 (자신의 모델만)
 router.put('/:id', async (req, res) => {
     try {
@@ -975,6 +1350,46 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/models/{id}/thumbnail:
+ *   post:
+ *     summary: 썸네일 업로드/수정
+ *     description: 모델의 썸네일 이미지를 업로드하거나 수정합니다 (자신의 모델만)
+ *     tags:
+ *       - Models
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 모델 ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - thumbnail
+ *             properties:
+ *               thumbnail:
+ *                 type: string
+ *                 format: binary
+ *                 description: 썸네일 이미지 파일
+ *     responses:
+ *       200:
+ *         description: 썸네일 업로드 성공
+ *       400:
+ *         description: 잘못된 요청
+ *       404:
+ *         description: 모델을 찾을 수 없음 또는 권한 없음
+ *       401:
+ *         description: 인증 실패
+ */
 // 4-1. 썸네일 업로드/수정 (자신의 모델만)
 router.post('/:id/thumbnail', uploadThumbnail.single('thumbnail'), async (req, res) => {
     try {
@@ -1088,6 +1503,39 @@ router.post('/:id/thumbnail', uploadThumbnail.single('thumbnail'), async (req, r
     }
 });
 
+/**
+ * @swagger
+ * /api/models/{id}/download:
+ *   get:
+ *     summary: 모델 파일 다운로드
+ *     description: 특정 모델의 GLB 파일을 다운로드합니다.
+ *     tags:
+ *       - Models
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 모델 ID
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: 모델 파일 다운로드 성공
+ *         content:
+ *           model/gltf-binary:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: 모델을 찾을 수 없음
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
 // 5. 모델 파일 다운로드 (자신의 모델만)
 router.get('/:id/download', async (req, res) => {
     try {
@@ -1167,6 +1615,36 @@ router.get('/:id/download', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/models/{id}/thumbnail:
+ *   get:
+ *     summary: 썸네일 이미지 조회
+ *     description: 모델의 썸네일 이미지를 조회합니다 (자신의 모델만)
+ *     tags:
+ *       - Models
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 모델 ID
+ *     responses:
+ *       200:
+ *         description: 썸네일 이미지
+ *         content:
+ *           image/*:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: 모델 또는 썸네일을 찾을 수 없음
+ *       401:
+ *         description: 인증 실패
+ */
 // 6. 썸네일 이미지 제공 (자신의 모델만)
 router.get('/:id/thumbnail', async (req, res) => {
     try {
@@ -1257,6 +1735,52 @@ router.get('/:id/thumbnail', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/models/{id}:
+ *   delete:
+ *     summary: 모델 삭제
+ *     description: 특정 모델을 DB와 파일 시스템에서 삭제합니다.
+ *     tags:
+ *       - Models
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 모델 ID
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: 모델 삭제 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Model deleted successfully"
+ *                 deleted_model:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     model_name:
+ *                       type: string
+ *       404:
+ *         description: 모델을 찾을 수 없음
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 오류
+ */
 // 7. 모델 삭제 (자신의 모델만)
 router.delete('/:id', async (req, res) => {
     try {

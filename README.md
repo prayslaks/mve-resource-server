@@ -46,9 +46,19 @@
 - ✅ 포맷: **GLB** (glTF Binary)
 - ✅ **보안**: 사용자 A는 사용자 B의 모델에 접근 불가
 
+### AI 3D 모델 생성 (JWT 인증 필요)
+- ✅ AI 생성 요청 (프롬프트 기반)
+- ✅ AI 생성 요청 (이미지 + 프롬프트)
+- ✅ 작업 상태 조회 (job_id 기반)
+- ✅ 내 작업 목록 조회
+- ✅ AI 서버 콜백 엔드포인트 (작업 완료/실패 알림)
+- ✅ **Redis 기반** 작업 큐 관리
+- ✅ **비동기 처리**: 요청 즉시 응답, AI 서버에서 백그라운드 생성
+
 ### 공통
-- ✅ JWT 토큰 검증 (모든 API에 적용)
+- ✅ JWT 토큰 검증 (모든 API에 적용, AI 콜백 제외)
 - ✅ PostgreSQL 데이터베이스
+- ✅ Redis (콘서트 세션 및 AI 작업 관리)
 - ✅ 상세한 오류 처리 및 디버깅 로그
 - ✅ CORS 지원
 
@@ -506,6 +516,115 @@ Content-Type: application/json
 ```http
 DELETE /api/models/:id
 Authorization: Bearer <your_token>
+```
+
+---
+
+### AI 생성 API (JWT 인증 필요)
+
+> **참고**: AI 생성 API는 언리얼 클라이언트의 `USenderReceiver::RequestGeneration` 기능을 Node.js로 구현한 것입니다.
+> 리소스 서버가 AI 서버로 요청을 전달하고, 완료 시 모델을 S3/로컬에 저장한 후 presigned URL을 제공합니다.
+
+#### 1. AI 3D 모델 생성 요청
+
+**프롬프트만 사용:**
+```http
+POST /api/models/generate
+Authorization: Bearer <your_token>
+Content-Type: multipart/form-data
+
+prompt: "A futuristic robot warrior"
+```
+
+**이미지 + 프롬프트 사용:**
+```http
+POST /api/models/generate
+Authorization: Bearer <your_token>
+Content-Type: multipart/form-data
+
+prompt: "Transform this character into sci-fi style"
+image: <file> (PNG, JPG, JPEG, WEBP, 최대 10MB)
+```
+
+**응답 (성공):**
+```json
+{
+  "success": true,
+  "message": "AI generation request submitted successfully",
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "data": {
+    // AI 서버의 응답 데이터
+  }
+}
+```
+
+#### 2. 작업 상태 조회
+
+```http
+GET /api/models/jobs/:job_id
+Authorization: Bearer <your_token>
+```
+
+**응답:**
+```json
+{
+  "success": true,
+  "data": {
+    "job_id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "completed",
+    "prompt": "A futuristic robot warrior",
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "completed_at": "2024-01-01T00:03:00.000Z",
+    "model_id": 123,
+    "download_url": "https://...",
+    "error_message": null
+  }
+}
+```
+
+**작업 상태:**
+- `queued`: 대기 중
+- `processing`: AI 서버에서 생성 중
+- `completed`: 완료 (S3/로컬 저장 완료, download_url 제공)
+- `failed`: 실패
+
+#### 3. 워크플로우
+
+```
+1. 클라이언트 → Resource Server: POST /api/models/generate
+   Response: { job_id: "abc-123" } (즉시 응답)
+
+2. Resource Server (백그라운드):
+   - Redis job 상태를 'processing'으로 업데이트
+   - AI Server에 HTTP 요청 전송 (1-3분 대기)
+   - AI Server 응답으로 GLB 파일 데이터 수신
+   - S3 업로드 또는 로컬 저장
+   - DB에 모델 정보 저장
+   - Presigned URL 생성
+   - Redis job 상태를 'completed'로 업데이트
+
+3. 클라이언트 (폴링):
+   - 주기적으로 GET /api/models/jobs/abc-123 호출
+   - status가 'completed'가 될 때까지 대기
+
+4. 클라이언트: 완료 확인 시
+   Response: { status: "completed", download_url: "https://...", model_id: 123 }
+
+5. 클라이언트: download_url로 모델 다운로드
+```
+
+**지원 이미지 포맷:**
+- PNG (.png)
+- JPEG (.jpg, .jpeg)
+- WebP (.webp)
+- 최대 파일 크기: 10MB
+
+**환경 설정:**
+```env
+# AI 서버 설정 (.env 파일)
+AI_SERVER_URL=http://localhost:8000
+AI_SERVER_TIMEOUT=180000  # 3분 (밀리초)
+RESOURCE_SERVER_URL=http://localhost:3001  # AI 콜백용
 ```
 
 ---
