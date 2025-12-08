@@ -16,7 +16,8 @@ const {
   removeAccessory,
   updateAccessories,
   updateListenServer,
-  toggleConcertOpen
+  toggleConcertOpen,
+  expireAllConcerts
 } = require('../services/concert-service');
 
 /**
@@ -1165,6 +1166,73 @@ router.post('/:roomId/toggle-open', verifyToken, async (req, res) => {
     res.status(400).json({
       success: false,
       error: 'TOGGLE_OPEN_FAILED',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/concert/dev/expire-all:
+ *   post:
+ *     summary: 모든 콘서트 세션 일괄 만료 (개발 환경 전용)
+ *     description: Redis에 저장된 모든 콘서트 세션을 일괄 삭제합니다. 프로덕션 환경에서는 사용 불가합니다.
+ *     tags:
+ *       - Concert (Development)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 모든 콘서트 만료 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 expiredCount:
+ *                   type: integer
+ *                   description: 만료된 콘서트 수
+ *                 expiredRooms:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: 만료된 콘서트 방 ID 목록
+ *       403:
+ *         description: 프로덕션 환경에서는 사용 불가
+ *       401:
+ *         description: 인증 실패
+ */
+router.post('/dev/expire-all', verifyToken, async (req, res) => {
+  try {
+    // 프로덕션 환경에서는 차단
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({
+        success: false,
+        error: 'DEV_ONLY_API',
+        message: 'This API is only available in development environment'
+      });
+    }
+
+    // 모든 콘서트 세션 만료
+    const result = await expireAllConcerts();
+
+    console.log(`[CONCERT] [DEV] 모든 콘서트 만료: ${result.expiredCount}개 (요청자: ${req.email})`);
+
+    res.json({
+      success: true,
+      message: 'All concert sessions have been expired',
+      expiredCount: result.expiredCount,
+      expiredRooms: result.expiredRooms
+    });
+  } catch (error) {
+    console.error('[CONCERT] [DEV] 모든 콘서트 만료 에러:', error);
+    res.status(500).json({
+      success: false,
+      error: 'EXPIRE_ALL_FAILED',
       message: error.message
     });
   }

@@ -479,6 +479,43 @@ async function toggleConcertOpen(roomId, isOpen) {
   return concertInfo;
 }
 
+/**
+ * 모든 콘서트 세션 일괄 만료 (개발 환경 전용)
+ * @returns {Promise<object>} - { expiredCount, expiredRooms }
+ */
+async function expireAllConcerts() {
+  // 활성 콘서트 목록의 모든 roomId 가져오기
+  const allRoomIds = await redisClient.zRange('sessions:active', 0, -1);
+
+  if (allRoomIds.length === 0) {
+    return { expiredCount: 0, expiredRooms: [] };
+  }
+
+  const expiredRooms = [];
+
+  // 각 콘서트의 관련 키들 삭제
+  for (const roomId of allRoomIds) {
+    const infoKey = `concert:room:${roomId}:info`;
+    const audienceKey = `concert:room:${roomId}:audience`;
+
+    // 콘서트 정보와 참가자 목록 삭제
+    await Promise.all([
+      redisClient.del(infoKey),
+      redisClient.del(audienceKey)
+    ]);
+
+    expiredRooms.push(roomId);
+  }
+
+  // 활성 콘서트 목록 전체 삭제
+  await redisClient.del('sessions:active');
+
+  return {
+    expiredCount: expiredRooms.length,
+    expiredRooms
+  };
+}
+
 module.exports = {
   createConcert,
   joinConcert,
@@ -494,5 +531,6 @@ module.exports = {
   removeAccessory,
   updateAccessories,
   updateListenServer,
-  toggleConcertOpen
+  toggleConcertOpen,
+  expireAllConcerts
 };

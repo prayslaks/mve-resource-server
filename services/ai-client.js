@@ -1,7 +1,7 @@
-const FormData = require('form-data');
-const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
+const FormData = require('form-data');
+const axios = require('axios');
 
 /**
  * AI 서버 클라이언트
@@ -11,7 +11,7 @@ class AIClient {
     constructor() {
         this.serverURL = process.env.AI_SERVER_URL || 'http://localhost:8000';
         this.timeout = parseInt(process.env.AI_SERVER_TIMEOUT) || 180000; // 3분
-        this.generateEndpoint = '/api/generate';
+        this.generateEndpoint = '/generate_3D_obj';
 
         console.log(`[AI Client] Initialized with server: ${this.serverURL}`);
     }
@@ -33,21 +33,9 @@ class AIClient {
             // FormData 객체 생성 (multipart/form-data)
             const formData = new FormData();
 
-            // JSON 메타데이터 추가
-            const metadata = {
-                prompt: prompt,
-                user_email: userEmail,
-                request_id: this.generateRequestId()
-            };
-
-            formData.append('metadata', JSON.stringify(metadata), {
-                contentType: 'application/json'
-            });
-
-            // 이미지 파일이 있으면 추가
+            // 1. 이미지 파일 먼저 추가 (있는 경우)
             if (imagePath && fs.existsSync(imagePath)) {
                 console.log(`[AI Client] 이미지 파일 로드: ${imagePath}`);
-                const imageStream = fs.createReadStream(imagePath);
                 const ext = path.extname(imagePath).toLowerCase();
 
                 // MIME 타입 결정
@@ -58,7 +46,8 @@ class AIClient {
                     mimeType = 'image/webp';
                 }
 
-                formData.append('image', imageStream, {
+                // 파일 스트림으로 추가 (Postman과 동일)
+                formData.append('image', fs.createReadStream(imagePath), {
                     filename: path.basename(imagePath),
                     contentType: mimeType
                 });
@@ -66,77 +55,75 @@ class AIClient {
                 console.warn(`[AI Client] 이미지 파일이 존재하지 않음: ${imagePath}`);
             }
 
-            // HTTP 요청 전송
+            // 2. Prompt 추가
+            formData.append('prompt', prompt);
+
+            // 3. User Email 추가
+            formData.append('user_email', userEmail);
+
+            // HTTP 요청 전송 (axios 사용 - Postman과 동일한 방식)
             const fullURL = this.serverURL + this.generateEndpoint;
-            console.log(`[AI Client] 요청 전송: ${fullURL}`);
+            console.log(`[AI Client] API Full URL: ${fullURL}`);
+            console.log(`[AI Client] 요청 전송 중...`);
 
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-
-            const response = await fetch(fullURL, {
-                method: 'POST',
-                body: formData,
+            const response = await axios.post(fullURL, formData, {
                 headers: formData.getHeaders(),
-                signal: controller.signal
+                timeout: this.timeout,
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity
             });
 
-            clearTimeout(timeoutId);
-
             // 응답 처리
-            const responseCode = response.status;
-            const responseText = await response.text();
+            console.log(`[AI Client] 응답 코드: ${response.status}`);
+            console.log(`[AI Client] 응답 내용:`, response.data);
 
-            console.log(`[AI Client] 응답 코드: ${responseCode}`);
-            console.log(`[AI Client] 응답 내용: ${responseText}`);
-
-            if (responseCode === 200) {
+            if (response.status === 200) {
                 console.log('[AI Client] ✓ 생성 요청이 큐에 등록되었습니다');
-
-                try {
-                    const jsonResponse = JSON.parse(responseText);
-                    return {
-                        success: true,
-                        data: jsonResponse
-                    };
-                } catch (e) {
-                    return {
-                        success: true,
-                        data: { message: responseText }
-                    };
-                }
-            } else if (responseCode >= 400 && responseCode < 500) {
-                console.error(`[AI Client] ✗ 클라이언트 에러 (${responseCode}): ${responseText}`);
                 return {
-                    success: false,
-                    error: 'CLIENT_ERROR',
-                    message: responseText,
-                    statusCode: responseCode
-                };
-            } else if (responseCode >= 500) {
-                console.error(`[AI Client] ✗ 서버 에러 (${responseCode}): ${responseText}`);
-                return {
-                    success: false,
-                    error: 'SERVER_ERROR',
-                    message: responseText,
-                    statusCode: responseCode
+                    success: true,
+                    data: response.data
                 };
             }
 
             return {
                 success: false,
                 error: 'UNKNOWN_ERROR',
-                message: responseText,
-                statusCode: responseCode
+                message: response.data,
+                statusCode: response.status
             };
 
         } catch (error) {
-            if (error.name === 'AbortError') {
+            if (error.code === 'ECONNABORTED') {
                 console.error(`[AI Client] ✗ 요청 타임아웃 (${this.timeout}ms)`);
                 return {
                     success: false,
                     error: 'TIMEOUT',
                     message: `Request timeout after ${this.timeout}ms`
                 };
+            }
+
+            if (error.response) {
+                // 서버가 응답했지만 오류 상태 코드
+                const statusCode = error.response.status;
+                const message = error.response.data;
+
+                console.error(`[AI Client] ✗ 서버 응답 오류 (${statusCode}):`, message);
+
+                if (statusCode >= 400 && statusCode < 500) {
+                    return {
+                        success: false,
+                        error: 'CLIENT_ERROR',
+                        message: message,
+                        statusCode: statusCode
+                    };
+                } else if (statusCode >= 500) {
+                    return {
+                        success: false,
+                        error: 'SERVER_ERROR',
+                        message: message,
+                        statusCode: statusCode
+                    };
+                }
             }
 
             console.error('[AI Client] ✗ 요청 실패:', error.message);

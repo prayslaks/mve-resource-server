@@ -55,7 +55,7 @@ const {
  *
  * Request Body:
  * - presetName: 프리셋 이름
- * - accessories: 액세서리 배열 [{ socketName, relativeLocation, relativeRotation, modelUrl }]
+ * - accessories: 액세서리 배열 [{ socketName, relativeLocation, relativeRotation, relativeScale, modelUrl }]
  * - description: 설명 (optional)
  * - isPublic: 공개 여부 (optional, default: false)
  */
