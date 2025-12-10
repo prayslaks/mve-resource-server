@@ -39,7 +39,7 @@ const verifyToken = (req, res, next) => {
         console.log('[AUTH] ERROR: Authorization 헤더 없음');
         return res.status(403).json({
             success: false,
-            error: 'NO_AUTH_HEADER',
+            code: 'NO_AUTH_HEADER',
             message: 'No authorization header provided'
         });
     }
@@ -49,7 +49,7 @@ const verifyToken = (req, res, next) => {
         console.log('[AUTH] ERROR: 잘못된 Authorization 헤더 형식', { authHeader });
         return res.status(403).json({
             success: false,
-            error: 'INVALID_AUTH_FORMAT',
+            code: 'INVALID_AUTH_FORMAT',
             message: 'Authorization header must start with "Bearer "'
         });
     }
@@ -60,7 +60,7 @@ const verifyToken = (req, res, next) => {
         console.log('[AUTH] ERROR: 토큰 없음');
         return res.status(403).json({
             success: false,
-            error: 'NO_TOKEN',
+            code: 'NO_TOKEN',
             message: 'No token provided'
         });
     }
@@ -70,7 +70,7 @@ const verifyToken = (req, res, next) => {
         console.error('[AUTH] CRITICAL ERROR: JWT_SECRET 설정되지 않음');
         return res.status(500).json({
             success: false,
-            error: 'SERVER_CONFIG_ERROR',
+            code: 'SERVER_CONFIG_ERROR',
             message: 'Server configuration error'
         });
     }
@@ -88,7 +88,7 @@ const verifyToken = (req, res, next) => {
             if (err.name === 'TokenExpiredError') {
                 return res.status(401).json({
                     success: false,
-                    error: 'TOKEN_EXPIRED',
+                    code: 'TOKEN_EXPIRED',
                     message: 'Token has expired',
                     expiredAt: err.expiredAt
                 });
@@ -98,7 +98,7 @@ const verifyToken = (req, res, next) => {
             if (err.name === 'JsonWebTokenError') {
                 return res.status(401).json({
                     success: false,
-                    error: 'INVALID_TOKEN',
+                    code: 'INVALID_TOKEN',
                     message: 'Invalid token'
                 });
             }
@@ -106,7 +106,7 @@ const verifyToken = (req, res, next) => {
             // 기타 JWT 에러
             return res.status(401).json({
                 success: false,
-                error: 'TOKEN_VERIFICATION_FAILED',
+                code: 'TOKEN_VERIFICATION_FAILED',
                 message: 'Token verification failed'
             });
         }

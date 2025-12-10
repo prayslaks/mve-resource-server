@@ -183,6 +183,8 @@ router.get('/list', async (req, res) => {
 
         res.json({
             success: true,
+            code: 'SUCCESS',
+            message: 'Operation successful',
             count: result.rows.length,
             audio_files: result.rows
         });
@@ -198,7 +200,7 @@ router.get('/list', async (req, res) => {
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -206,7 +208,7 @@ router.get('/list', async (req, res) => {
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }
@@ -288,7 +290,7 @@ router.get('/stream/:id', async (req, res) => {
             console.log('[AUDIO-STREAM] ERROR: 음원 없음', { id });
             return res.status(404).json({
                 success: false,
-                error: 'AUDIO_NOT_FOUND',
+                code: 'AUDIO_NOT_FOUND',
                 message: 'Audio file not found'
             });
         }
@@ -314,6 +316,8 @@ router.get('/stream/:id', async (req, res) => {
 
             return res.json({
                 success: true,
+                code: 'SUCCESS',
+                message: 'Operation successful',
                 stream_url: presignedUrl,
                 audio_file: {
                     id: parseInt(id),
@@ -333,7 +337,7 @@ router.get('/stream/:id', async (req, res) => {
             console.log('[AUDIO-STREAM] ERROR: 파일 없음', { filePath });
             return res.status(404).json({
                 success: false,
-                error: 'FILE_NOT_FOUND',
+                code: 'FILE_NOT_FOUND',
                 message: 'Audio file not found on server'
             });
         }
@@ -348,6 +352,8 @@ router.get('/stream/:id', async (req, res) => {
         // S3와 동일한 형식으로 URL 반환
         return res.json({
             success: true,
+            code: 'SUCCESS',
+            message: 'Operation successful',
             stream_url: `/api/audio/file/${id}`,
             audio_file: {
                 id: parseInt(id),
@@ -368,7 +374,7 @@ router.get('/stream/:id', async (req, res) => {
         if (!res.headersSent) {
             res.status(500).json({
                 success: false,
-                error: 'STREAMING_ERROR',
+                code: 'STREAMING_ERROR',
                 message: 'Failed to stream audio file'
             });
         }
@@ -427,7 +433,7 @@ router.get('/file/:id', async (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).json({
                 success: false,
-                error: 'AUDIO_NOT_FOUND',
+                code: 'AUDIO_NOT_FOUND',
                 message: 'Audio file not found'
             });
         }
@@ -438,7 +444,7 @@ router.get('/file/:id', async (req, res) => {
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({
                 success: false,
-                error: 'FILE_NOT_FOUND',
+                code: 'FILE_NOT_FOUND',
                 message: 'Audio file not found on server'
             });
         }
@@ -479,7 +485,7 @@ router.get('/file/:id', async (req, res) => {
         if (!res.headersSent) {
             res.status(500).json({
                 success: false,
-                error: 'STREAMING_ERROR',
+                code: 'STREAMING_ERROR',
                 message: 'Failed to stream audio file'
             });
         }
@@ -551,7 +557,7 @@ router.post('/upload', upload.single('audio'), async (req, res) => {
         if (!req.file) {
             return res.status(400).json({
                 success: false,
-                error: 'NO_FILE',
+                code: 'NO_FILE',
                 message: 'No audio file provided'
             });
         }
@@ -563,7 +569,7 @@ router.post('/upload', upload.single('audio'), async (req, res) => {
             fs.unlinkSync(req.file.path);
             return res.status(400).json({
                 success: false,
-                error: 'MISSING_TITLE',
+                code: 'MISSING_TITLE',
                 message: 'Title is required'
             });
         }
@@ -613,6 +619,7 @@ router.post('/upload', upload.single('audio'), async (req, res) => {
 
         res.status(201).json({
             success: true,
+            code: 'SUCCESS',
             message: 'Audio file uploaded successfully',
             audio_file: result.rows[0]
         });
@@ -634,7 +641,7 @@ router.post('/upload', upload.single('audio'), async (req, res) => {
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -642,7 +649,7 @@ router.post('/upload', upload.single('audio'), async (req, res) => {
 
         res.status(500).json({
             success: false,
-            error: 'UPLOAD_ERROR',
+            code: 'UPLOAD_ERROR',
             message: error.message || 'Failed to upload audio file'
         });
     }
@@ -711,6 +718,8 @@ router.get('/search/:query', async (req, res) => {
 
         res.json({
             success: true,
+            code: 'SUCCESS',
+            message: 'Operation successful',
             count: result.rows.length,
             audio_files: result.rows
         });
@@ -726,7 +735,7 @@ router.get('/search/:query', async (req, res) => {
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -734,7 +743,7 @@ router.get('/search/:query', async (req, res) => {
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }
@@ -797,7 +806,7 @@ router.get('/:id', async (req, res) => {
             console.log('[AUDIO-INFO] ERROR: 음원 없음', { id });
             return res.status(404).json({
                 success: false,
-                error: 'AUDIO_NOT_FOUND',
+                code: 'AUDIO_NOT_FOUND',
                 message: 'Audio file not found'
             });
         }
@@ -806,6 +815,8 @@ router.get('/:id', async (req, res) => {
 
         res.json({
             success: true,
+            code: 'SUCCESS',
+            message: 'Operation successful',
             audio_file: result.rows[0]
         });
 
@@ -820,7 +831,7 @@ router.get('/:id', async (req, res) => {
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -828,7 +839,7 @@ router.get('/:id', async (req, res) => {
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }

@@ -1728,6 +1728,66 @@
         }
       }
     },
+    "/api/concert/{roomId}": {
+      "delete": {
+        "summary": "콘서트 세션 파괴",
+        "description": "콘서트 세션을 명시적으로 종료하고 모든 관련 데이터를 삭제합니다 (스튜디오만 가능)",
+        "tags": [
+          "Concert"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "roomId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "콘서트 방 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "콘서트 세션 파괴 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "roomId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패"
+          },
+          "403": {
+            "description": "권한 없음 (스튜디오만 가능)"
+          },
+          "404": {
+            "description": "콘서트를 찾을 수 없음"
+          }
+        }
+      }
+    },
     "/api/concert/dev/expire-all": {
       "post": {
         "summary": "모든 콘서트 세션 일괄 만료 (개발 환경 전용)",

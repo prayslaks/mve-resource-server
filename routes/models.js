@@ -109,7 +109,7 @@ router.post('/dev/upload-from-ai', uploadModelWithThumbnail.fields([
 
             return res.status(403).json({
                 success: false,
-                error: 'DEV_ONLY_API',
+                code: 'DEV_ONLY_API',
                 message: 'This API is for development only'
             });
         }
@@ -119,7 +119,7 @@ router.post('/dev/upload-from-ai', uploadModelWithThumbnail.fields([
             console.log('[DEV-AI-UPLOAD] ERROR: 모델 파일 누락');
             return res.status(400).json({
                 success: false,
-                error: 'MISSING_MODEL_FILE',
+                code: 'MISSING_MODEL_FILE',
                 message: 'Model file is required'
             });
         }
@@ -162,6 +162,7 @@ router.post('/dev/upload-from-ai', uploadModelWithThumbnail.fields([
 
         res.status(201).json({
             success: true,
+            code: 'SUCCESS',
             message: 'Model uploaded successfully (DEV MODE)',
             model: result.rows[0]
         });
@@ -186,7 +187,7 @@ router.post('/dev/upload-from-ai', uploadModelWithThumbnail.fields([
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -194,7 +195,7 @@ router.post('/dev/upload-from-ai', uploadModelWithThumbnail.fields([
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }
@@ -276,7 +277,7 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
 
             return res.status(400).json({
                 success: false,
-                error: 'MISSING_JOB_CREDENTIALS',
+                code: 'MISSING_JOB_CREDENTIALS',
                 message: 'job_id and job_secret are required'
             });
         }
@@ -299,7 +300,7 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
 
             return res.status(404).json({
                 success: false,
-                error: 'JOB_NOT_FOUND',
+                code: 'JOB_NOT_FOUND',
                 message: 'Job not found or expired'
             });
         }
@@ -321,7 +322,7 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
 
             return res.status(403).json({
                 success: false,
-                error: 'INVALID_JOB_SECRET',
+                code: 'INVALID_JOB_SECRET',
                 message: 'Invalid job secret'
             });
         }
@@ -341,7 +342,7 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
 
             return res.status(409).json({
                 success: false,
-                error: 'JOB_ALREADY_COMPLETED',
+                code: 'JOB_ALREADY_COMPLETED',
                 message: 'This job has already been completed',
                 model_id: job.model_id
             });
@@ -363,7 +364,7 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
 
             return res.status(400).json({
                 success: false,
-                error: 'MISSING_MODEL_FILE',
+                code: 'MISSING_MODEL_FILE',
                 message: 'Model file is required'
             });
         }
@@ -409,6 +410,7 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
 
         res.status(201).json({
             success: true,
+            code: 'SUCCESS',
             message: 'Model uploaded successfully from AI server',
             model: result.rows[0]
         });
@@ -449,7 +451,7 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -457,7 +459,7 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }
@@ -554,7 +556,7 @@ router.post('/generate', verifyToken, uploadThumbnail.single('image'), async (re
 
             return res.status(400).json({
                 success: false,
-                error: 'INVALID_PROMPT',
+                code: 'INVALID_PROMPT',
                 message: 'Prompt is required and cannot be empty'
             });
         }
@@ -586,6 +588,7 @@ router.post('/generate', verifyToken, uploadThumbnail.single('image'), async (re
         // 클라이언트에 즉시 응답 (비동기 처리)
         res.status(202).json({
             success: true,
+            code: 'SUCCESS',
             message: 'AI generation request submitted successfully',
             job_id: job_id
         });
@@ -742,7 +745,7 @@ router.post('/generate', verifyToken, uploadThumbnail.single('image'), async (re
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Failed to process AI generation request'
         });
     }
@@ -799,7 +802,7 @@ router.get('/jobs/:job_id', verifyToken, async (req, res) => {
         if (!jobData || Object.keys(jobData).length === 0) {
             return res.status(404).json({
                 success: false,
-                error: 'JOB_NOT_FOUND',
+                code: 'JOB_NOT_FOUND',
                 message: 'Job not found or expired'
             });
         }
@@ -808,13 +811,15 @@ router.get('/jobs/:job_id', verifyToken, async (req, res) => {
         if (parseInt(jobData.user_id) !== userId) {
             return res.status(403).json({
                 success: false,
-                error: 'FORBIDDEN',
+                code: 'FORBIDDEN',
                 message: 'You do not have permission to view this job'
             });
         }
 
         res.json({
             success: true,
+            code: 'SUCCESS',
+            message: 'Operation successful',
             data: {
                 job_id: job_id,
                 status: jobData.status,
@@ -831,7 +836,7 @@ router.get('/jobs/:job_id', verifyToken, async (req, res) => {
         console.error('[JOB-STATUS] 조회 실패:', error);
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }
@@ -898,6 +903,8 @@ router.get('/list', async (req, res) => {
 
         res.json({
             success: true,
+            code: 'SUCCESS',
+            message: 'Operation successful',
             count: result.rows.length,
             models: result.rows
         });
@@ -913,7 +920,7 @@ router.get('/list', async (req, res) => {
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -921,7 +928,7 @@ router.get('/list', async (req, res) => {
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }
@@ -986,7 +993,7 @@ router.get('/:id', async (req, res) => {
             });
             return res.status(404).json({
                 success: false,
-                error: 'MODEL_NOT_FOUND',
+                code: 'MODEL_NOT_FOUND',
                 message: 'Model not found or access denied'
             });
         }
@@ -998,6 +1005,8 @@ router.get('/:id', async (req, res) => {
 
         res.json({
             success: true,
+            code: 'SUCCESS',
+            message: 'Operation successful',
             model: result.rows[0]
         });
 
@@ -1012,7 +1021,7 @@ router.get('/:id', async (req, res) => {
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -1020,7 +1029,7 @@ router.get('/:id', async (req, res) => {
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }
@@ -1098,7 +1107,7 @@ router.post('/upload', uploadModelWithThumbnail.fields([
             console.log('[MODEL-UPLOAD] ERROR: 모델 파일 누락');
             return res.status(400).json({
                 success: false,
-                error: 'MISSING_MODEL_FILE',
+                code: 'MISSING_MODEL_FILE',
                 message: 'Model file is required'
             });
         }
@@ -1137,6 +1146,7 @@ router.post('/upload', uploadModelWithThumbnail.fields([
 
         res.status(201).json({
             success: true,
+            code: 'SUCCESS',
             message: 'Model uploaded successfully',
             model: result.rows[0]
         });
@@ -1171,7 +1181,7 @@ router.post('/upload', uploadModelWithThumbnail.fields([
         if (error.code === '23505') {
             return res.status(409).json({
                 success: false,
-                error: 'DUPLICATE_MODEL_NAME',
+                code: 'DUPLICATE_MODEL_NAME',
                 message: 'Model name already exists for this user'
             });
         }
@@ -1179,7 +1189,7 @@ router.post('/upload', uploadModelWithThumbnail.fields([
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -1187,7 +1197,7 @@ router.post('/upload', uploadModelWithThumbnail.fields([
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }
@@ -1261,7 +1271,7 @@ router.put('/:id', async (req, res) => {
             });
             return res.status(404).json({
                 success: false,
-                error: 'MODEL_NOT_FOUND',
+                code: 'MODEL_NOT_FOUND',
                 message: 'Model not found or access denied'
             });
         }
@@ -1291,7 +1301,7 @@ router.put('/:id', async (req, res) => {
         if (updates.length === 0) {
             return res.status(400).json({
                 success: false,
-                error: 'NO_UPDATE_FIELDS',
+                code: 'NO_UPDATE_FIELDS',
                 message: 'No fields to update'
             });
         }
@@ -1313,6 +1323,7 @@ router.put('/:id', async (req, res) => {
 
         res.json({
             success: true,
+            code: 'SUCCESS',
             message: 'Model updated successfully',
             model: result.rows[0]
         });
@@ -1328,7 +1339,7 @@ router.put('/:id', async (req, res) => {
         if (error.code === '23505') {
             return res.status(409).json({
                 success: false,
-                error: 'DUPLICATE_MODEL_NAME',
+                code: 'DUPLICATE_MODEL_NAME',
                 message: 'Model name already exists for this user'
             });
         }
@@ -1336,7 +1347,7 @@ router.put('/:id', async (req, res) => {
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -1344,7 +1355,7 @@ router.put('/:id', async (req, res) => {
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }
@@ -1407,7 +1418,7 @@ router.post('/:id/thumbnail', uploadThumbnail.single('thumbnail'), async (req, r
             console.log('[MODEL-THUMBNAIL] ERROR: 썸네일 파일 누락');
             return res.status(400).json({
                 success: false,
-                error: 'MISSING_THUMBNAIL_FILE',
+                code: 'MISSING_THUMBNAIL_FILE',
                 message: 'Thumbnail file is required'
             });
         }
@@ -1430,7 +1441,7 @@ router.post('/:id/thumbnail', uploadThumbnail.single('thumbnail'), async (req, r
             });
             return res.status(404).json({
                 success: false,
-                error: 'MODEL_NOT_FOUND',
+                code: 'MODEL_NOT_FOUND',
                 message: 'Model not found or access denied'
             });
         }
@@ -1467,6 +1478,7 @@ router.post('/:id/thumbnail', uploadThumbnail.single('thumbnail'), async (req, r
 
         res.json({
             success: true,
+            code: 'SUCCESS',
             message: 'Thumbnail uploaded successfully',
             model: result.rows[0]
         });
@@ -1489,7 +1501,7 @@ router.post('/:id/thumbnail', uploadThumbnail.single('thumbnail'), async (req, r
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -1497,7 +1509,7 @@ router.post('/:id/thumbnail', uploadThumbnail.single('thumbnail'), async (req, r
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }
@@ -1561,7 +1573,7 @@ router.get('/:id/download', async (req, res) => {
             });
             return res.status(404).json({
                 success: false,
-                error: 'MODEL_NOT_FOUND',
+                code: 'MODEL_NOT_FOUND',
                 message: 'Model not found or access denied'
             });
         }
@@ -1577,7 +1589,7 @@ router.get('/:id/download', async (req, res) => {
             });
             return res.status(404).json({
                 success: false,
-                error: 'FILE_NOT_FOUND',
+                code: 'FILE_NOT_FOUND',
                 message: 'Model file not found on server'
             });
         }
@@ -1601,7 +1613,7 @@ router.get('/:id/download', async (req, res) => {
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -1609,7 +1621,7 @@ router.get('/:id/download', async (req, res) => {
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }
@@ -1670,7 +1682,7 @@ router.get('/:id/thumbnail', async (req, res) => {
             });
             return res.status(404).json({
                 success: false,
-                error: 'MODEL_NOT_FOUND',
+                code: 'MODEL_NOT_FOUND',
                 message: 'Model not found or access denied'
             });
         }
@@ -1683,7 +1695,7 @@ router.get('/:id/thumbnail', async (req, res) => {
             });
             return res.status(404).json({
                 success: false,
-                error: 'THUMBNAIL_NOT_FOUND',
+                code: 'THUMBNAIL_NOT_FOUND',
                 message: 'Thumbnail not found for this model'
             });
         }
@@ -1698,7 +1710,7 @@ router.get('/:id/thumbnail', async (req, res) => {
             });
             return res.status(404).json({
                 success: false,
-                error: 'FILE_NOT_FOUND',
+                code: 'FILE_NOT_FOUND',
                 message: 'Thumbnail file not found on server'
             });
         }
@@ -1721,7 +1733,7 @@ router.get('/:id/thumbnail', async (req, res) => {
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -1729,7 +1741,7 @@ router.get('/:id/thumbnail', async (req, res) => {
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }
@@ -1805,7 +1817,7 @@ router.delete('/:id', async (req, res) => {
             });
             return res.status(404).json({
                 success: false,
-                error: 'MODEL_NOT_FOUND',
+                code: 'MODEL_NOT_FOUND',
                 message: 'Model not found or access denied'
             });
         }
@@ -1844,6 +1856,7 @@ router.delete('/:id', async (req, res) => {
 
         res.json({
             success: true,
+            code: 'SUCCESS',
             message: 'Model deleted successfully',
             deleted_model: result.rows[0]
         });
@@ -1859,7 +1872,7 @@ router.delete('/:id', async (req, res) => {
         if (error.code) {
             return res.status(500).json({
                 success: false,
-                error: 'DATABASE_ERROR',
+                code: 'DATABASE_ERROR',
                 message: 'Database error',
                 code: error.code
             });
@@ -1867,7 +1880,7 @@ router.delete('/:id', async (req, res) => {
 
         res.status(500).json({
             success: false,
-            error: 'INTERNAL_SERVER_ERROR',
+            code: 'INTERNAL_SERVER_ERROR',
             message: 'Server error'
         });
     }

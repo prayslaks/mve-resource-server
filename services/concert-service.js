@@ -480,6 +480,31 @@ async function toggleConcertOpen(roomId, isOpen) {
 }
 
 /**
+ * 콘서트 세션 파괴 (명시적 종료)
+ * @param {string} roomId - 콘서트 방 ID
+ * @returns {Promise<object>} - { success: true, roomId }
+ */
+async function destroyConcert(roomId) {
+  const infoKey = `concert:room:${roomId}:info`;
+  const audienceKey = `concert:room:${roomId}:audience`;
+
+  // 콘서트 존재 여부 확인
+  const data = await redisClient.get(infoKey);
+  if (!data) {
+    throw new Error('Concert not found');
+  }
+
+  // 콘서트 정보와 참가자 목록 삭제
+  await Promise.all([
+    redisClient.del(infoKey),
+    redisClient.del(audienceKey),
+    redisClient.zRem('sessions:active', roomId)
+  ]);
+
+  return { success: true, roomId };
+}
+
+/**
  * 모든 콘서트 세션 일괄 만료 (개발 환경 전용)
  * @returns {Promise<object>} - { expiredCount, expiredRooms }
  */
@@ -532,5 +557,6 @@ module.exports = {
   updateAccessories,
   updateListenServer,
   toggleConcertOpen,
+  destroyConcert,
   expireAllConcerts
 };

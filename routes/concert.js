@@ -17,6 +17,7 @@ const {
   updateAccessories,
   updateListenServer,
   toggleConcertOpen,
+  destroyConcert,
   expireAllConcerts
 } = require('../services/concert-service');
 
@@ -82,6 +83,8 @@ const {
  *
  * Response:
  * - success: true/false
+ code: 'SUCCESS',
+ message: 'Operation successful',
  * - roomId: 생성된 콘서트 방 ID
  * - expiresIn: 만료 시간 (초)
  */
@@ -93,7 +96,7 @@ router.post('/create', verifyToken, async (req, res) => {
     if (!concertName) {
       return res.status(400).json({
         success: false,
-        error: 'MISSING_FIELDS',
+        code: 'MISSING_FIELDS',
         message: 'concertName is required'
       });
     }
@@ -102,7 +105,7 @@ router.post('/create', verifyToken, async (req, res) => {
     if (songs && !Array.isArray(songs)) {
       return res.status(400).json({
         success: false,
-        error: 'INVALID_SONGS',
+        code: 'INVALID_SONGS',
         message: 'songs must be an array'
       });
     }
@@ -111,7 +114,7 @@ router.post('/create', verifyToken, async (req, res) => {
     if (accessories && !Array.isArray(accessories)) {
       return res.status(400).json({
         success: false,
-        error: 'INVALID_ACCESSORIES',
+        code: 'INVALID_ACCESSORIES',
         message: 'accessories must be an array'
       });
     }
@@ -137,6 +140,8 @@ router.post('/create', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
+      message: 'Operation successful',
       roomId: result.roomId,
       expiresIn: result.expiresIn
     });
@@ -144,7 +149,7 @@ router.post('/create', verifyToken, async (req, res) => {
     console.error('[CONCERT] 콘서트 생성 에러:', error);
     res.status(500).json({
       success: false,
-      error: 'CREATE_FAILED',
+      code: 'CREATE_FAILED',
       message: error.message
     });
   }
@@ -189,6 +194,8 @@ router.get('/list', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
+      message: 'Operation successful',
       count: concerts.length,
       concerts
     });
@@ -196,7 +203,7 @@ router.get('/list', verifyToken, async (req, res) => {
     console.error('[CONCERT] 콘서트 목록 조회 에러:', error);
     res.status(500).json({
       success: false,
-      error: 'LIST_FAILED',
+      code: 'LIST_FAILED',
       message: error.message
     });
   }
@@ -249,7 +256,7 @@ router.post('/:roomId/join', verifyToken, async (req, res) => {
     if (!clientId) {
       return res.status(400).json({
         success: false,
-        error: 'MISSING_CLIENT_ID',
+        code: 'MISSING_CLIENT_ID',
         message: 'clientId is required'
       });
     }
@@ -259,7 +266,7 @@ router.post('/:roomId/join', verifyToken, async (req, res) => {
     if (concertInfo.studioUserId !== req.userId) {
       return res.status(403).json({
         success: false,
-        error: 'PERMISSION_DENIED',
+        code: 'PERMISSION_DENIED',
         message: 'Only the studio listen server can register a client.'
       });
     }
@@ -271,13 +278,14 @@ router.post('/:roomId/join', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
       message: 'Client joined concert successfully'
     });
   } catch (error) {
     console.error('[CONCERT] 콘서트 참가 에러:', error);
     res.status(400).json({
       success: false,
-      error: 'JOIN_FAILED',
+      code: 'JOIN_FAILED',
       message: error.message
     });
   }
@@ -330,7 +338,7 @@ router.post('/:roomId/leave', verifyToken, async (req, res) => {
     if (!clientId) {
       return res.status(400).json({
         success: false,
-        error: 'MISSING_CLIENT_ID',
+        code: 'MISSING_CLIENT_ID',
         message: 'clientId is required'
       });
     }
@@ -340,7 +348,7 @@ router.post('/:roomId/leave', verifyToken, async (req, res) => {
     if (concertInfo.studioUserId !== req.userId) {
       return res.status(403).json({
         success: false,
-        error: 'PERMISSION_DENIED',
+        code: 'PERMISSION_DENIED',
         message: 'Only the studio listen server can unregister a client.'
       });
     }
@@ -349,9 +357,11 @@ router.post('/:roomId/leave', verifyToken, async (req, res) => {
     console.log(`[CONCERT] 클라이언트 퇴장: ${clientId} ← ${roomId} (요청자: ${req.email})`);
 
     res.json({ success: true, message: 'Client left concert successfully' });
+    code: 'SUCCESS',
+    message: 'Operation successful',
   } catch (error) {
     console.error('[CONCERT] 콘서트 퇴장 에러:', error);
-    res.status(400).json({ success: false, error: 'LEAVE_FAILED', message: error.message });
+    res.status(400).json({ success: false, code: 'LEAVE_FAILED', message: error.message });
   }
 });
 
@@ -397,13 +407,15 @@ router.get('/:roomId/info', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
+      message: 'Operation successful',
       concert: concertInfo
     });
   } catch (error) {
     console.error('[CONCERT] 콘서트 정보 조회 에러:', error);
     res.status(404).json({
       success: false,
-      error: 'CONCERT_NOT_FOUND',
+      code: 'CONCERT_NOT_FOUND',
       message: error.message
     });
   }
@@ -465,7 +477,7 @@ router.post('/:roomId/songs/add', verifyToken, async (req, res) => {
     if (!songNum || !audioId || !streamUrl || !stageDirectionId) {
       return res.status(400).json({
         success: false,
-        error: 'MISSING_FIELDS',
+        code: 'MISSING_FIELDS',
         message: 'songNum, audioId, streamUrl, stageDirectionId are required'
       });
     }
@@ -475,7 +487,7 @@ router.post('/:roomId/songs/add', verifyToken, async (req, res) => {
     if (concertInfo.studioUserId !== req.userId) {
       return res.status(403).json({
         success: false,
-        error: 'PERMISSION_DENIED',
+        code: 'PERMISSION_DENIED',
         message: 'Only studio can add songs'
       });
     }
@@ -487,6 +499,7 @@ router.post('/:roomId/songs/add', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
       message: 'Song added successfully',
       songs: updatedConcert.songs,
       currentSong: updatedConcert.currentSong
@@ -495,7 +508,7 @@ router.post('/:roomId/songs/add', verifyToken, async (req, res) => {
     console.error('[CONCERT] 노래 추가 에러:', error);
     res.status(400).json({
       success: false,
-      error: 'ADD_SONG_FAILED',
+      code: 'ADD_SONG_FAILED',
       message: error.message
     });
   }
@@ -543,7 +556,7 @@ router.delete('/:roomId/songs/:songNum', verifyToken, async (req, res) => {
     if (concertInfo.studioUserId !== req.userId) {
       return res.status(403).json({
         success: false,
-        error: 'PERMISSION_DENIED',
+        code: 'PERMISSION_DENIED',
         message: 'Only studio can remove songs'
       });
     }
@@ -555,6 +568,7 @@ router.delete('/:roomId/songs/:songNum', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
       message: 'Song removed successfully',
       songs: updatedConcert.songs,
       currentSong: updatedConcert.currentSong
@@ -563,7 +577,7 @@ router.delete('/:roomId/songs/:songNum', verifyToken, async (req, res) => {
     console.error('[CONCERT] 노래 삭제 에러:', error);
     res.status(400).json({
       success: false,
-      error: 'REMOVE_SONG_FAILED',
+      code: 'REMOVE_SONG_FAILED',
       message: error.message
     });
   }
@@ -616,7 +630,7 @@ router.post('/:roomId/songs/change', verifyToken, async (req, res) => {
     if (!songNum) {
       return res.status(400).json({
         success: false,
-        error: 'MISSING_FIELDS',
+        code: 'MISSING_FIELDS',
         message: 'songNum is required'
       });
     }
@@ -626,7 +640,7 @@ router.post('/:roomId/songs/change', verifyToken, async (req, res) => {
     if (concertInfo.studioUserId !== req.userId) {
       return res.status(403).json({
         success: false,
-        error: 'PERMISSION_DENIED',
+        code: 'PERMISSION_DENIED',
         message: 'Only studio can change songs'
       });
     }
@@ -638,6 +652,7 @@ router.post('/:roomId/songs/change', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
       message: 'Song changed successfully',
       currentSong: updatedConcert.currentSong
     });
@@ -645,7 +660,7 @@ router.post('/:roomId/songs/change', verifyToken, async (req, res) => {
     console.error('[CONCERT] 곡 변경 에러:', error);
     res.status(400).json({
       success: false,
-      error: 'CHANGE_SONG_FAILED',
+      code: 'CHANGE_SONG_FAILED',
       message: error.message
     });
   }
@@ -697,7 +712,7 @@ router.get('/:roomId/current-song', verifyToken, async (req, res) => {
     if (!hasAccess) {
       return res.status(403).json({
         success: false,
-        error: 'ACCESS_DENIED',
+        code: 'ACCESS_DENIED',
         message: 'Not in concert room'
       });
     }
@@ -707,13 +722,15 @@ router.get('/:roomId/current-song', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
+      message: 'Operation successful',
       currentSong
     });
   } catch (error) {
     console.error('[CONCERT] 현재 곡 조회 에러:', error);
     res.status(500).json({
       success: false,
-      error: 'GET_CURRENT_SONG_FAILED',
+      code: 'GET_CURRENT_SONG_FAILED',
       message: error.message
     });
   }
@@ -789,7 +806,7 @@ router.post('/:roomId/accessories/add', verifyToken, async (req, res) => {
     if (!socketName || !relativeLocation || !relativeRotation || !modelUrl) {
       return res.status(400).json({
         success: false,
-        error: 'MISSING_FIELDS',
+        code: 'MISSING_FIELDS',
         message: 'socketName, relativeLocation, relativeRotation, modelUrl are required'
       });
     }
@@ -799,7 +816,7 @@ router.post('/:roomId/accessories/add', verifyToken, async (req, res) => {
     if (concertInfo.studioUserId !== req.userId) {
       return res.status(403).json({
         success: false,
-        error: 'PERMISSION_DENIED',
+        code: 'PERMISSION_DENIED',
         message: 'Only studio can add accessories'
       });
     }
@@ -816,6 +833,7 @@ router.post('/:roomId/accessories/add', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
       message: 'Accessory added successfully',
       accessories: updatedConcert.accessories
     });
@@ -823,7 +841,7 @@ router.post('/:roomId/accessories/add', verifyToken, async (req, res) => {
     console.error('[CONCERT] 액세서리 추가 에러:', error);
     res.status(400).json({
       success: false,
-      error: 'ADD_ACCESSORY_FAILED',
+      code: 'ADD_ACCESSORY_FAILED',
       message: error.message
     });
   }
@@ -871,7 +889,7 @@ router.delete('/:roomId/accessories/:index', verifyToken, async (req, res) => {
     if (concertInfo.studioUserId !== req.userId) {
       return res.status(403).json({
         success: false,
-        error: 'PERMISSION_DENIED',
+        code: 'PERMISSION_DENIED',
         message: 'Only studio can remove accessories'
       });
     }
@@ -883,6 +901,7 @@ router.delete('/:roomId/accessories/:index', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
       message: 'Accessory removed successfully',
       accessories: updatedConcert.accessories
     });
@@ -890,7 +909,7 @@ router.delete('/:roomId/accessories/:index', verifyToken, async (req, res) => {
     console.error('[CONCERT] 액세서리 삭제 에러:', error);
     res.status(400).json({
       success: false,
-      error: 'REMOVE_ACCESSORY_FAILED',
+      code: 'REMOVE_ACCESSORY_FAILED',
       message: error.message
     });
   }
@@ -953,7 +972,7 @@ router.put('/:roomId/accessories', verifyToken, async (req, res) => {
     if (!Array.isArray(accessories)) {
       return res.status(400).json({
         success: false,
-        error: 'INVALID_ACCESSORIES',
+        code: 'INVALID_ACCESSORIES',
         message: 'accessories must be an array'
       });
     }
@@ -963,7 +982,7 @@ router.put('/:roomId/accessories', verifyToken, async (req, res) => {
     if (concertInfo.studioUserId !== req.userId) {
       return res.status(403).json({
         success: false,
-        error: 'PERMISSION_DENIED',
+        code: 'PERMISSION_DENIED',
         message: 'Only studio can update accessories'
       });
     }
@@ -975,6 +994,7 @@ router.put('/:roomId/accessories', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
       message: 'Accessories updated successfully',
       accessories: updatedConcert.accessories
     });
@@ -982,7 +1002,7 @@ router.put('/:roomId/accessories', verifyToken, async (req, res) => {
     console.error('[CONCERT] 액세서리 교체 에러:', error);
     res.status(400).json({
       success: false,
-      error: 'UPDATE_ACCESSORIES_FAILED',
+      code: 'UPDATE_ACCESSORIES_FAILED',
       message: error.message
     });
   }
@@ -1048,7 +1068,7 @@ router.post('/:roomId/listen-server', verifyToken, async (req, res) => {
     if (!localIP || !port) {
       return res.status(400).json({
         success: false,
-        error: 'MISSING_FIELDS',
+        code: 'MISSING_FIELDS',
         message: 'localIP and port are required'
       });
     }
@@ -1058,7 +1078,7 @@ router.post('/:roomId/listen-server', verifyToken, async (req, res) => {
     if (concertInfo.studioUserId !== req.userId) {
       return res.status(403).json({
         success: false,
-        error: 'PERMISSION_DENIED',
+        code: 'PERMISSION_DENIED',
         message: 'Only studio can update listen server info'
       });
     }
@@ -1075,6 +1095,7 @@ router.post('/:roomId/listen-server', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
       message: 'Listen server info updated successfully',
       listenServer: updatedConcert.listenServer
     });
@@ -1082,7 +1103,7 @@ router.post('/:roomId/listen-server', verifyToken, async (req, res) => {
     console.error('[CONCERT] 리슨 서버 정보 등록 에러:', error);
     res.status(400).json({
       success: false,
-      error: 'UPDATE_LISTEN_SERVER_FAILED',
+      code: 'UPDATE_LISTEN_SERVER_FAILED',
       message: error.message
     });
   }
@@ -1136,7 +1157,7 @@ router.post('/:roomId/toggle-open', verifyToken, async (req, res) => {
     if (typeof isOpen !== 'boolean') {
       return res.status(400).json({
         success: false,
-        error: 'MISSING_FIELDS',
+        code: 'MISSING_FIELDS',
         message: 'isOpen (boolean) is required'
       });
     }
@@ -1146,7 +1167,7 @@ router.post('/:roomId/toggle-open', verifyToken, async (req, res) => {
     if (concertInfo.studioUserId !== req.userId) {
       return res.status(403).json({
         success: false,
-        error: 'PERMISSION_DENIED',
+        code: 'PERMISSION_DENIED',
         message: 'Only studio can toggle concert open status'
       });
     }
@@ -1158,6 +1179,7 @@ router.post('/:roomId/toggle-open', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
       message: `Concert is now ${isOpen ? 'open' : 'closed'}`,
       isOpen: updatedConcert.isOpen
     });
@@ -1165,7 +1187,83 @@ router.post('/:roomId/toggle-open', verifyToken, async (req, res) => {
     console.error('[CONCERT] 콘서트 개방 상태 변경 에러:', error);
     res.status(400).json({
       success: false,
-      error: 'TOGGLE_OPEN_FAILED',
+      code: 'TOGGLE_OPEN_FAILED',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/concert/{roomId}:
+ *   delete:
+ *     summary: 콘서트 세션 파괴
+ *     description: 콘서트 세션을 명시적으로 종료하고 모든 관련 데이터를 삭제합니다 (스튜디오만 가능)
+ *     tags:
+ *       - Concert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roomId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: 콘서트 방 ID
+ *     responses:
+ *       200:
+ *         description: 콘서트 세션 파괴 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 code:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *                 roomId:
+ *                   type: string
+ *       403:
+ *         description: 권한 없음 (스튜디오만 가능)
+ *       404:
+ *         description: 콘서트를 찾을 수 없음
+ *       401:
+ *         description: 인증 실패
+ */
+router.delete('/:roomId', verifyToken, async (req, res) => {
+  try {
+    const { roomId } = req.params;
+
+    // 콘서트 정보 조회하여 스튜디오 권한 확인
+    const concertInfo = await getConcertInfo(roomId);
+    if (concertInfo.studioUserId !== req.userId) {
+      return res.status(403).json({
+        success: false,
+        code: 'PERMISSION_DENIED',
+        message: 'Only studio can destroy the concert'
+      });
+    }
+
+    // 콘서트 세션 파괴
+    const result = await destroyConcert(roomId);
+
+    console.log(`[CONCERT] 콘서트 세션 파괴: ${roomId} by ${req.email}`);
+
+    res.json({
+      success: true,
+      code: 'SUCCESS',
+      message: 'Concert session destroyed successfully',
+      roomId: result.roomId
+    });
+  } catch (error) {
+    console.error('[CONCERT] 콘서트 세션 파괴 에러:', error);
+    const statusCode = error.message === 'Concert not found' ? 404 : 400;
+    res.status(statusCode).json({
+      success: false,
+      code: 'DESTROY_FAILED',
       message: error.message
     });
   }
@@ -1212,7 +1310,7 @@ router.post('/dev/expire-all', verifyToken, async (req, res) => {
     if (process.env.NODE_ENV === 'production') {
       return res.status(403).json({
         success: false,
-        error: 'DEV_ONLY_API',
+        code: 'DEV_ONLY_API',
         message: 'This API is only available in development environment'
       });
     }
@@ -1224,6 +1322,7 @@ router.post('/dev/expire-all', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
       message: 'All concert sessions have been expired',
       expiredCount: result.expiredCount,
       expiredRooms: result.expiredRooms
@@ -1232,7 +1331,7 @@ router.post('/dev/expire-all', verifyToken, async (req, res) => {
     console.error('[CONCERT] [DEV] 모든 콘서트 만료 에러:', error);
     res.status(500).json({
       success: false,
-      error: 'EXPIRE_ALL_FAILED',
+      code: 'EXPIRE_ALL_FAILED',
       message: error.message
     });
   }

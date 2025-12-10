@@ -67,7 +67,7 @@ router.post('/save', verifyToken, async (req, res) => {
     if (!presetName || !accessories) {
       return res.status(400).json({
         success: false,
-        error: 'MISSING_FIELDS',
+        code: 'MISSING_FIELDS',
         message: 'presetName and accessories are required'
       });
     }
@@ -76,7 +76,7 @@ router.post('/save', verifyToken, async (req, res) => {
     if (!Array.isArray(accessories)) {
       return res.status(400).json({
         success: false,
-        error: 'INVALID_ACCESSORIES',
+        code: 'INVALID_ACCESSORIES',
         message: 'accessories must be an array'
       });
     }
@@ -94,6 +94,8 @@ router.post('/save', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
+      message: 'Operation successful',
       preset
     });
   } catch (error) {
@@ -103,14 +105,14 @@ router.post('/save', verifyToken, async (req, res) => {
     if (error.code === '23505') {
       return res.status(409).json({
         success: false,
-        error: 'DUPLICATE_PRESET_NAME',
+        code: 'DUPLICATE_PRESET_NAME',
         message: 'A preset with this name already exists'
       });
     }
 
     res.status(500).json({
       success: false,
-      error: 'SAVE_FAILED',
+      code: 'SAVE_FAILED',
       message: error.message
     });
   }
@@ -164,6 +166,8 @@ router.get('/list', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
+      message: 'Operation successful',
       count: presets.length,
       presets
     });
@@ -171,7 +175,7 @@ router.get('/list', verifyToken, async (req, res) => {
     console.error('[PRESET] 프리셋 목록 조회 에러:', error);
     res.status(500).json({
       success: false,
-      error: 'LIST_FAILED',
+      code: 'LIST_FAILED',
       message: error.message
     });
   }
@@ -222,7 +226,7 @@ router.get('/:id', verifyToken, async (req, res) => {
     if (isNaN(presetId)) {
       return res.status(400).json({
         success: false,
-        error: 'INVALID_ID',
+        code: 'INVALID_ID',
         message: 'Invalid preset ID'
       });
     }
@@ -233,6 +237,8 @@ router.get('/:id', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
+      message: 'Operation successful',
       preset
     });
   } catch (error) {
@@ -241,7 +247,7 @@ router.get('/:id', verifyToken, async (req, res) => {
     if (error.message === 'Preset not found') {
       return res.status(404).json({
         success: false,
-        error: 'PRESET_NOT_FOUND',
+        code: 'PRESET_NOT_FOUND',
         message: error.message
       });
     }
@@ -249,14 +255,14 @@ router.get('/:id', verifyToken, async (req, res) => {
     if (error.message === 'Access denied') {
       return res.status(403).json({
         success: false,
-        error: 'ACCESS_DENIED',
+        code: 'ACCESS_DENIED',
         message: error.message
       });
     }
 
     res.status(500).json({
       success: false,
-      error: 'GET_FAILED',
+      code: 'GET_FAILED',
       message: error.message
     });
   }
@@ -316,7 +322,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (isNaN(presetId)) {
       return res.status(400).json({
         success: false,
-        error: 'INVALID_ID',
+        code: 'INVALID_ID',
         message: 'Invalid preset ID'
       });
     }
@@ -327,7 +333,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (accessories !== undefined && !Array.isArray(accessories)) {
       return res.status(400).json({
         success: false,
-        error: 'INVALID_ACCESSORIES',
+        code: 'INVALID_ACCESSORIES',
         message: 'accessories must be an array'
       });
     }
@@ -344,6 +350,8 @@ router.put('/:id', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
+      message: 'Operation successful',
       preset
     });
   } catch (error) {
@@ -352,7 +360,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (error.message === 'Preset not found') {
       return res.status(404).json({
         success: false,
-        error: 'PRESET_NOT_FOUND',
+        code: 'PRESET_NOT_FOUND',
         message: error.message
       });
     }
@@ -360,7 +368,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (error.message === 'Access denied') {
       return res.status(403).json({
         success: false,
-        error: 'ACCESS_DENIED',
+        code: 'ACCESS_DENIED',
         message: error.message
       });
     }
@@ -369,14 +377,14 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (error.code === '23505') {
       return res.status(409).json({
         success: false,
-        error: 'DUPLICATE_PRESET_NAME',
+        code: 'DUPLICATE_PRESET_NAME',
         message: 'A preset with this name already exists'
       });
     }
 
     res.status(500).json({
       success: false,
-      error: 'UPDATE_FAILED',
+      code: 'UPDATE_FAILED',
       message: error.message
     });
   }
@@ -427,7 +435,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
     if (isNaN(presetId)) {
       return res.status(400).json({
         success: false,
-        error: 'INVALID_ID',
+        code: 'INVALID_ID',
         message: 'Invalid preset ID'
       });
     }
@@ -438,6 +446,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
 
     res.json({
       success: true,
+      code: 'SUCCESS',
       message: 'Preset deleted successfully'
     });
   } catch (error) {
@@ -446,7 +455,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
     if (error.message === 'Preset not found') {
       return res.status(404).json({
         success: false,
-        error: 'PRESET_NOT_FOUND',
+        code: 'PRESET_NOT_FOUND',
         message: error.message
       });
     }
@@ -454,14 +463,14 @@ router.delete('/:id', verifyToken, async (req, res) => {
     if (error.message === 'Access denied') {
       return res.status(403).json({
         success: false,
-        error: 'ACCESS_DENIED',
+        code: 'ACCESS_DENIED',
         message: error.message
       });
     }
 
     res.status(500).json({
       success: false,
-      error: 'DELETE_FAILED',
+      code: 'DELETE_FAILED',
       message: error.message
     });
   }
