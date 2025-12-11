@@ -179,9 +179,15 @@ function main() {
     }))
   };
 
-  const outputFile = 'docs/response-code-statistics.json';
+  // working-scripts/outputs 폴더 생성 (없으면)
+  const outputDir = path.join(__dirname, '..', 'working-scripts', 'outputs');
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const outputFile = path.join(outputDir, 'response-code-statistics.json');
   fs.writeFileSync(outputFile, JSON.stringify(outputData, null, 2), 'utf-8');
-  console.log(`💾 상세 통계가 ${outputFile}에 저장되었습니다.`);
+  console.log(`💾 상세 통계가 ${path.relative(process.cwd(), outputFile)}에 저장되었습니다.`);
   console.log();
 }
 

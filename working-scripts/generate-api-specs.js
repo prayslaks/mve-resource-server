@@ -108,8 +108,14 @@ try {
   console.log('🔍 라우트 파일 스캔 중...');
   const spec = swaggerJsdoc(options);
 
+  // working-scripts/outputs 폴더 생성 (없으면)
+  const outputDir = path.join(__dirname, '..', 'working-scripts', 'outputs');
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
   // JSON 파일로 저장
-  const outputPath = path.join(__dirname, '../docs/api-spec.json');
+  const outputPath = path.join(outputDir, 'api-spec.json');
   fs.writeFileSync(outputPath, JSON.stringify(spec, null, 2), 'utf8');
 
   console.log('✅ API 문서 생성 완료!');
