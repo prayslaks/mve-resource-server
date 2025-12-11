@@ -11,6 +11,70 @@ const {
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     Accessory:
+ *       type: object
+ *       properties:
+ *         socketName:
+ *           type: string
+ *           example: "head_socket"
+ *         relativeLocation:
+ *           type: object
+ *           properties:
+ *             x:
+ *               type: number
+ *               format: float
+ *             y:
+ *               type: number
+ *               format: float
+ *             z:
+ *               type: number
+ *               format: float
+ *         relativeRotation:
+ *           type: object
+ *           properties:
+ *             pitch:
+ *               type: number
+ *               format: float
+ *             yaw:
+ *               type: number
+ *               format: float
+ *             roll:
+ *               type: number
+ *               format: float
+ *         relativeScale:
+ *           type: number
+ *           format: float
+ *           example: 1.0
+ *         modelUrl:
+ *           type: string
+ *           example: "/models/hat.glb"
+ *     AccessoryPreset:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         presetName:
+ *           type: string
+ *         accessories:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Accessory'
+ *         description:
+ *           type: string
+ *         isPublic:
+ *           type: boolean
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ */
+
+/**
+ * @swagger
  * /api/presets/save:
  *   post:
  *     summary: 액세서리 프리셋 저장
@@ -35,7 +99,7 @@ const {
  *               accessories:
  *                 type: array
  *                 items:
- *                   type: object
+ *                   $ref: '#/components/schemas/Accessory'
  *               description:
  *                 type: string
  *               isPublic:
@@ -44,6 +108,10 @@ const {
  *     responses:
  *       200:
  *         description: 프리셋 저장 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccessoryPreset'
  *       400:
  *         description: 잘못된 요청
  *       401:
@@ -150,7 +218,7 @@ router.post('/save', verifyToken, async (req, res) => {
  *                 presets:
  *                   type: array
  *                   items:
- *                     type: object
+ *                     $ref: '#/components/schemas/AccessoryPreset'
  *       401:
  *         description: 인증 실패
  *       500:
@@ -209,7 +277,7 @@ router.get('/list', verifyToken, async (req, res) => {
  *                 success:
  *                   type: boolean
  *                 preset:
- *                   type: object
+ *                   $ref: '#/components/schemas/AccessoryPreset'
  *       400:
  *         description: 잘못된 요청
  *       403:
@@ -298,12 +366,16 @@ router.get('/:id', verifyToken, async (req, res) => {
  *               accessories:
  *                 type: array
  *                 items:
- *                   type: object
+ *                   $ref: '#/components/schemas/Accessory'
  *               isPublic:
  *                 type: boolean
  *     responses:
  *       200:
  *         description: 프리셋 업데이트 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccessoryPreset'
  *       400:
  *         description: 잘못된 요청
  *       403:
