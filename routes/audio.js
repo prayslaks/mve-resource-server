@@ -115,22 +115,29 @@ router.use(verifyToken);
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 count:
- *                   type: integer
- *                   example: 3
- *                 audio_files:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/AudioFile'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     count:
+ *                       type: integer
+ *                       example: 3
+ *                     audioFiles:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/AudioFile'
  *       401:
  *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 // 1. 음원 목록 조회 (모든 유저 접근 가능)
 router.get('/list', async (req, res) => {
@@ -150,7 +157,16 @@ router.get('/list', async (req, res) => {
             code: 'SUCCESS',
             message: 'Operation successful',
             count: result.rows.length,
-            audio_files: result.rows
+            audioFiles: result.rows.map(row => ({
+                id: row.id,
+                title: row.title,
+                artist: row.artist,
+                filePath: row.file_path,
+                fileSize: row.file_size,
+                duration: row.duration,
+                format: row.format,
+                createdAt: row.created_at
+            }))
         });
 
     } catch (error) {
@@ -202,36 +218,36 @@ router.get('/list', async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 stream_url:
- *                   type: string
- *                   description: 스트리밍 URL (S3 Presigned URL 또는 로컬 URL)
- *                   example: "https://bucket.s3.amazonaws.com/audio/file.aac?X-Amz-Signature=..."
- *                 audio_file:
- *                   type: object
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
  *                   properties:
- *                     id:
- *                       type: integer
- *                     title:
+ *                     streamUrl:
  *                       type: string
- *                     format:
- *                       type: string
- *                     file_size:
+ *                       description: 스트리밍 URL (S3 Presigned URL 또는 로컬 URL)
+ *                       example: "https://bucket.s3.amazonaws.com/audio/file.aac?X-Amz-Signature=..."
+ *                     expiresIn:
  *                       type: integer
- *                 expires_in:
- *                   type: integer
- *                   description: URL 유효 시간 (초, S3만 해당)
- *                   example: 3600
+ *                       description: URL 유효 시간 (초, S3만 해당)
+ *                       example: 3600
  *       404:
  *         description: 음원을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 // 2. 음원 스트리밍 URL 획득 (S3: Presigned URL, 로컬: 내부 URL)
 router.get('/stream/:id', async (req, res) => {
@@ -274,7 +290,6 @@ router.get('/stream/:id', async (req, res) => {
 
             console.log('[AUDIO-STREAM] S3 Presigned URL 생성:', {
                 id,
-                title: audioFile.title,
                 expiresIn: '1h'
             });
 
@@ -282,18 +297,12 @@ router.get('/stream/:id', async (req, res) => {
                 success: true,
                 code: 'SUCCESS',
                 message: 'Operation successful',
-                stream_url: presignedUrl,
-                audio_file: {
-                    id: parseInt(id),
-                    title: audioFile.title,
-                    format: audioFile.format,
-                    file_size: audioFile.file_size
-                },
-                expires_in: 3600
+                streamUrl: presignedUrl,
+                expiresIn: 3600
             });
         }
 
-        // 로컬 스토리지: URL 반환 (S3와 동일한 응답 형식)
+        // 로컬 스토리지: URL 반환
         const filePath = path.join(process.env.FILE_SERVER_PATH || './files', audioFile.file_path);
 
         // 파일 존재 확인
@@ -306,26 +315,13 @@ router.get('/stream/:id', async (req, res) => {
             });
         }
 
-        const stat = fs.statSync(filePath);
+        console.log('[AUDIO-STREAM] Local URL 생성:', { id });
 
-        console.log('[AUDIO-STREAM] Local URL 생성:', {
-            id,
-            title: audioFile.title
-        });
-
-        // S3와 동일한 형식으로 URL 반환
         return res.json({
             success: true,
             code: 'SUCCESS',
             message: 'Operation successful',
-            stream_url: `/api/audio/file/${id}`,
-            audio_file: {
-                id: parseInt(id),
-                title: audioFile.title,
-                format: audioFile.format,
-                file_size: stat.size
-            },
-            storage_type: 'local'
+            streamUrl: `/api/audio/file/${id}`
         });
 
     } catch (error) {
@@ -498,22 +494,30 @@ router.get('/file/:id', async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Audio file uploaded successfully"
- *                 audio_file:
- *                   $ref: '#/components/schemas/AudioFile'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     audioFile:
+ *                       $ref: '#/components/schemas/AudioFile'
  *       400:
  *         description: 잘못된 요청 (파일 또는 제목 누락)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 // 4. 음원 업로드
 router.post('/upload', upload.single('audio'), async (req, res) => {
@@ -581,11 +585,21 @@ router.post('/upload', upload.single('audio'), async (req, res) => {
             title: result.rows[0].title
         });
 
+        const uploadedFile = result.rows[0];
         res.status(201).json({
             success: true,
             code: 'SUCCESS',
             message: 'Audio file uploaded successfully',
-            audio_file: result.rows[0]
+            audioFile: {
+                id: uploadedFile.id,
+                title: uploadedFile.title,
+                artist: uploadedFile.artist,
+                filePath: uploadedFile.file_path,
+                fileSize: uploadedFile.file_size,
+                duration: uploadedFile.duration,
+                format: uploadedFile.format,
+                createdAt: uploadedFile.created_at
+            }
         });
 
     } catch (error) {
@@ -643,22 +657,29 @@ router.post('/upload', upload.single('audio'), async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 count:
- *                   type: integer
- *                   example: 2
- *                 audio_files:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/AudioFile'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     count:
+ *                       type: integer
+ *                       example: 2
+ *                     audioFiles:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/AudioFile'
  *       401:
  *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 // 5. 음원 검색 (제목 또는 아티스트)
 router.get('/search/:query', async (req, res) => {
@@ -685,7 +706,16 @@ router.get('/search/:query', async (req, res) => {
             code: 'SUCCESS',
             message: 'Operation successful',
             count: result.rows.length,
-            audio_files: result.rows
+            audioFiles: result.rows.map(row => ({
+                id: row.id,
+                title: row.title,
+                artist: row.artist,
+                filePath: row.file_path,
+                fileSize: row.file_size,
+                duration: row.duration,
+                format: row.format,
+                createdAt: row.created_at
+            }))
         });
 
     } catch (error) {
@@ -737,19 +767,30 @@ router.get('/search/:query', async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 audio_file:
- *                   $ref: '#/components/schemas/AudioFile'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     audioFile:
+ *                       $ref: '#/components/schemas/AudioFile'
  *       404:
  *         description: 음원을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 // 6. 특정 음원 정보 조회 (반드시 맨 마지막에 위치해야 함 - :id가 다른 경로를 가로채지 않도록)
 router.get('/:id', async (req, res) => {
@@ -777,11 +818,21 @@ router.get('/:id', async (req, res) => {
 
         console.log('[AUDIO-INFO] SUCCESS:', { id, title: result.rows[0].title });
 
+        const audioFile = result.rows[0];
         res.json({
             success: true,
             code: 'SUCCESS',
             message: 'Operation successful',
-            audio_file: result.rows[0]
+            audioFile: {
+                id: audioFile.id,
+                title: audioFile.title,
+                artist: audioFile.artist,
+                filePath: audioFile.file_path,
+                fileSize: audioFile.file_size,
+                duration: audioFile.duration,
+                format: audioFile.format,
+                createdAt: audioFile.created_at
+            }
         });
 
     } catch (error) {

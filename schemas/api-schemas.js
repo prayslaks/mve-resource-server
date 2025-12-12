@@ -10,6 +10,55 @@
 
 module.exports = {
   // ============================================
+  // 공통 응답 스키마
+  // ============================================
+  BaseResponse: {
+    type: 'object',
+    description: '기본 API 응답 포맷 (모든 API가 이 구조를 따름)',
+    required: ['success', 'code', 'message'],
+    properties: {
+      success: {
+        type: 'boolean',
+        description: '요청 성공 여부',
+        example: true
+      },
+      code: {
+        type: 'integer',
+        description: '응답 코드 (HTTP 상태 코드와 유사)',
+        example: 200
+      },
+      message: {
+        type: 'string',
+        description: '응답 메시지',
+        example: 'Success'
+      }
+    }
+  },
+
+  ErrorResponse: {
+    type: 'object',
+    description: '에러 응답 포맷',
+    required: ['success', 'code', 'message'],
+    properties: {
+      success: {
+        type: 'boolean',
+        description: '항상 false',
+        example: false
+      },
+      code: {
+        type: 'integer',
+        description: '에러 코드',
+        example: 400
+      },
+      message: {
+        type: 'string',
+        description: '에러 메시지',
+        example: 'Invalid request'
+      }
+    }
+  },
+
+  // ============================================
   // 기하학적 데이터 타입
   // ============================================
   Vector3D: {
@@ -81,12 +130,12 @@ module.exports = {
         description: '아티스트',
         example: 'Artist A'
       },
-      file_path: {
+      filePath: {
         type: 'string',
         description: '파일 경로',
         example: 'audio/sample1.m4a'
       },
-      file_size: {
+      fileSize: {
         type: 'integer',
         description: '파일 크기 (bytes)',
         example: 3145728
@@ -102,7 +151,7 @@ module.exports = {
         description: '파일 포맷',
         example: 'm4a'
       },
-      created_at: {
+      createdAt: {
         type: 'string',
         format: 'date-time',
         description: '생성 시간'
@@ -122,38 +171,38 @@ module.exports = {
         description: '모델 ID',
         example: 1
       },
-      model_name: {
+      modelName: {
         type: 'string',
         description: '모델 이름',
         example: 'My Avatar'
       },
-      file_path: {
+      filePath: {
         type: 'string',
         description: '파일 경로',
         example: 'models/user1/avatar.glb'
       },
-      file_size: {
+      fileSize: {
         type: 'integer',
         description: '파일 크기 (bytes)',
         example: 5242880
       },
-      thumbnail_path: {
+      thumbnailPath: {
         type: 'string',
         nullable: true,
         description: '썸네일 경로',
         example: 'models/user1/avatar_thumb.jpg'
       },
-      is_ai_generated: {
+      isAiGenerated: {
         type: 'boolean',
         description: 'AI로 생성된 모델 여부 (true: AI 생성, false: 직접 업로드)',
         example: false
       },
-      created_at: {
+      createdAt: {
         type: 'string',
         format: 'date-time',
         description: '생성 시간'
       },
-      updated_at: {
+      updatedAt: {
         type: 'string',
         format: 'date-time',
         description: '수정 시간'
@@ -165,7 +214,7 @@ module.exports = {
     type: 'object',
     description: 'AI 작업 상태 정보',
     properties: {
-      job_id: {
+      jobId: {
         type: 'string',
         format: 'uuid',
         description: '작업 ID',
@@ -182,36 +231,53 @@ module.exports = {
         description: 'AI 생성 프롬프트',
         example: 'A futuristic robot character'
       },
-      created_at: {
+      createdAt: {
         type: 'string',
         format: 'date-time',
         description: '작업 생성 시간'
       },
-      completed_at: {
+      completedAt: {
         type: 'string',
         format: 'date-time',
         nullable: true,
         description: '작업 완료 시간'
       },
-      model_id: {
+      modelId: {
         type: 'integer',
         nullable: true,
         description: '생성된 모델 ID (완료 시)',
         example: 42
       },
-      download_url: {
+      downloadUrl: {
         type: 'string',
         nullable: true,
         description: '다운로드 URL (완료 시)',
         example: 'https://example.com/models/generated/model.glb'
       },
-      error_message: {
+      errorMessage: {
         type: 'string',
         nullable: true,
         description: '에러 메시지 (실패 시)',
         example: 'Model generation failed'
       }
     }
+  },
+
+  DeletedModelInfo: {
+  type: 'object',
+      description: '삭제된 모델 정보',
+      properties: {
+        id: {
+          type: 'integer',
+          description: '모델 ID',
+          example: 1
+        },
+        modelName: {
+          type: 'string',
+          description: '모델 이름',
+          example: 'My Avatar'
+        }
+      }
   },
 
   // ============================================

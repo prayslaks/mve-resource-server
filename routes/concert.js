@@ -65,73 +65,36 @@ const {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Operation successful"
- *                 roomId:
- *                   type: string
- *                   description: 생성된 콘서트 방 ID
- *                   example: "concert_1702345678901_abc123def"
- *                 expiresIn:
- *                   type: integer
- *                   description: 만료 시간 (초)
- *                   example: 3600
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     roomId:
+ *                       type: string
+ *                       description: 생성된 콘서트 방 ID
+ *                       example: "concert_1702345678901_abc123def"
+ *                     expiresIn:
+ *                       type: integer
+ *                       description: 만료 시간 (초)
+ *                       example: 3600
  *       400:
  *         description: 잘못된 요청
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "MISSING_FIELDS"
- *                 message:
- *                   type: string
- *                   example: "concertName is required"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 에러
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "CREATE_FAILED"
- *                 message:
- *                   type: string
- *                   example: "Error message"
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 /**
  * POST /api/concert/create
@@ -233,58 +196,31 @@ router.post('/create', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Operation successful"
- *                 count:
- *                   type: integer
- *                   description: 콘서트 개수
- *                   example: 2
- *                 concerts:
- *                   type: array
- *                   description: 콘서트 목록
- *                   items:
- *                     $ref: '#/components/schemas/ConcertInfo'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     count:
+ *                       type: integer
+ *                       description: 콘서트 개수
+ *                       example: 2
+ *                     concerts:
+ *                       type: array
+ *                       description: 콘서트 목록
+ *                       items:
+ *                         $ref: '#/components/schemas/ConcertInfo'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "LIST_FAILED"
- *                 message:
- *                   type: string
- *                   example: "Error message"
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/list', verifyToken, async (req, res) => {
   try {
@@ -346,65 +282,25 @@ router.get('/list', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Client joined concert successfully"
+ *               $ref: '#/components/schemas/BaseResponse'
  *       400:
  *         description: 잘못된 요청
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "MISSING_CLIENT_ID"
- *                 message:
- *                   type: string
- *                   example: "clientId is required"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
  *         description: 권한 없음 (스튜디오 리슨 서버만 호출 가능)
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "PERMISSION_DENIED"
- *                 message:
- *                   type: string
- *                   example: "Only the studio listen server can register a client."
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/:roomId/join', verifyToken, async (req, res) => {
   try {
@@ -486,65 +382,25 @@ router.post('/:roomId/join', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Client left concert successfully"
+ *               $ref: '#/components/schemas/BaseResponse'
  *       400:
  *         description: 잘못된 요청
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "MISSING_CLIENT_ID"
- *                 message:
- *                   type: string
- *                   example: "clientId is required"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
  *         description: 권한 없음 (스튜디오 리슨 서버만 호출 가능)
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "PERMISSION_DENIED"
- *                 message:
- *                   type: string
- *                   example: "Only the studio listen server can unregister a client."
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/:roomId/leave', verifyToken, async (req, res) => {
   try {
@@ -607,51 +463,24 @@ router.post('/:roomId/leave', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Operation successful"
- *                 concert:
- *                   $ref: '#/components/schemas/ConcertInfo'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     concert:
+ *                       $ref: '#/components/schemas/ConcertInfo'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: 콘서트를 찾을 수 없음
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "CONCERT_NOT_FOUND"
- *                 message:
- *                   type: string
- *                   example: "Concert not found"
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/:roomId/info', verifyToken, async (req, res) => {
   try {
@@ -705,75 +534,38 @@ router.get('/:roomId/info', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Song added successfully"
- *                 songs:
- *                   type: array
- *                   description: 업데이트된 노래 목록
- *                   items:
- *                     $ref: '#/components/schemas/ConcertSong'
- *                 currentSong:
- *                   allOf:
- *                     - $ref: '#/components/schemas/ConcertSong'
- *                   nullable: true
- *                   description: 현재 재생 중인 곡
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     songs:
+ *                       type: array
+ *                       description: 업데이트된 노래 목록
+ *                       items:
+ *                         $ref: '#/components/schemas/ConcertSong'
+ *                     currentSong:
+ *                       allOf:
+ *                         - $ref: '#/components/schemas/ConcertSong'
+ *                       nullable: true
+ *                       description: 현재 재생 중인 곡
  *       400:
  *         description: 잘못된 요청
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "MISSING_FIELDS"
- *                 message:
- *                   type: string
- *                   example: "songNum, audioId, streamUrl, stageDirectionId are required"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
  *         description: 권한 없음 (스튜디오만 가능)
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "PERMISSION_DENIED"
- *                 message:
- *                   type: string
- *                   example: "Only studio can add songs"
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/:roomId/songs/add', verifyToken, async (req, res) => {
   try {
@@ -852,75 +644,38 @@ router.post('/:roomId/songs/add', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Song removed successfully"
- *                 songs:
- *                   type: array
- *                   description: 업데이트된 노래 목록
- *                   items:
- *                     $ref: '#/components/schemas/ConcertSong'
- *                 currentSong:
- *                   allOf:
- *                     - $ref: '#/components/schemas/ConcertSong'
- *                   nullable: true
- *                   description: 현재 재생 중인 곡
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     songs:
+ *                       type: array
+ *                       description: 업데이트된 노래 목록
+ *                       items:
+ *                         $ref: '#/components/schemas/ConcertSong'
+ *                     currentSong:
+ *                       allOf:
+ *                         - $ref: '#/components/schemas/ConcertSong'
+ *                       nullable: true
+ *                       description: 현재 재생 중인 곡
  *       400:
  *         description: 잘못된 요청
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "REMOVE_SONG_FAILED"
- *                 message:
- *                   type: string
- *                   example: "Error message"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
  *         description: 권한 없음 (스튜디오만 가능)
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "PERMISSION_DENIED"
- *                 message:
- *                   type: string
- *                   example: "Only studio can remove songs"
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete('/:roomId/songs/:songNum', verifyToken, async (req, res) => {
   try {
@@ -995,68 +750,30 @@ router.delete('/:roomId/songs/:songNum', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Song changed successfully"
- *                 currentSong:
- *                   type: object
- *                   description: 변경된 현재 곡
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     currentSong:
+ *                       $ref: '#/components/schemas/ConcertSong'
  *       400:
  *         description: 잘못된 요청
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "MISSING_FIELDS"
- *                 message:
- *                   type: string
- *                   example: "songNum is required"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
  *         description: 권한 없음 (스튜디오만 가능)
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "PERMISSION_DENIED"
- *                 message:
- *                   type: string
- *                   example: "Only studio can change songs"
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/:roomId/songs/change', verifyToken, async (req, res) => {
   try {
@@ -1126,69 +843,32 @@ router.post('/:roomId/songs/change', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Operation successful"
- *                 currentSong:
- *                   allOf:
- *                     - $ref: '#/components/schemas/ConcertSong'
- *                   nullable: true
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     currentSong:
+ *                       allOf:
+ *                         - $ref: '#/components/schemas/ConcertSong'
+ *                       nullable: true
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
  *         description: 접근 권한 없음
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "ACCESS_DENIED"
- *                 message:
- *                   type: string
- *                   example: "Not in concert room"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "GET_CURRENT_SONG_FAILED"
- *                 message:
- *                   type: string
- *                   example: "Error message"
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/:roomId/current-song', verifyToken, async (req, res) => {
   try {
@@ -1254,70 +934,33 @@ router.get('/:roomId/current-song', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Accessory added successfully"
- *                 accessories:
- *                   type: array
- *                   description: 업데이트된 액세서리 목록
- *                   items:
- *                     $ref: '#/components/schemas/Accessory'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     accessories:
+ *                       type: array
+ *                       description: 업데이트된 액세서리 목록
+ *                       items:
+ *                         $ref: '#/components/schemas/Accessory'
  *       400:
  *         description: 잘못된 요청
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "MISSING_FIELDS"
- *                 message:
- *                   type: string
- *                   example: "socketName, relativeLocation, relativeRotation, modelUrl are required"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
  *         description: 권한 없음 (스튜디오만 가능)
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "PERMISSION_DENIED"
- *                 message:
- *                   type: string
- *                   example: "Only studio can add accessories"
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/:roomId/accessories/add', verifyToken, async (req, res) => {
   try {
@@ -1400,70 +1043,33 @@ router.post('/:roomId/accessories/add', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Accessory removed successfully"
- *                 accessories:
- *                   type: array
- *                   description: 업데이트된 액세서리 목록
- *                   items:
- *                     $ref: '#/components/schemas/Accessory'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     accessories:
+ *                       type: array
+ *                       description: 업데이트된 액세서리 목록
+ *                       items:
+ *                         $ref: '#/components/schemas/Accessory'
  *       400:
  *         description: 잘못된 요청
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "REMOVE_ACCESSORY_FAILED"
- *                 message:
- *                   type: string
- *                   example: "Error message"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
  *         description: 권한 없음 (스튜디오만 가능)
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "PERMISSION_DENIED"
- *                 message:
- *                   type: string
- *                   example: "Only studio can remove accessories"
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete('/:roomId/accessories/:index', verifyToken, async (req, res) => {
   try {
@@ -1538,70 +1144,33 @@ router.delete('/:roomId/accessories/:index', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Accessories updated successfully"
- *                 accessories:
- *                   type: array
- *                   description: 업데이트된 액세서리 목록
- *                   items:
- *                     $ref: '#/components/schemas/Accessory'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     accessories:
+ *                       type: array
+ *                       description: 업데이트된 액세서리 목록
+ *                       items:
+ *                         $ref: '#/components/schemas/Accessory'
  *       400:
  *         description: 잘못된 요청
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "INVALID_ACCESSORIES"
- *                 message:
- *                   type: string
- *                   example: "accessories must be an array"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
  *         description: 권한 없음 (스튜디오만 가능)
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "PERMISSION_DENIED"
- *                 message:
- *                   type: string
- *                   example: "Only studio can update accessories"
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.put('/:roomId/accessories', verifyToken, async (req, res) => {
   try {
@@ -1677,67 +1246,30 @@ router.put('/:roomId/accessories', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Listen server info updated successfully"
- *                 listenServer:
- *                   $ref: '#/components/schemas/ListenServer'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     listenServer:
+ *                       $ref: '#/components/schemas/ListenServer'
  *       400:
  *         description: 잘못된 요청
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "MISSING_FIELDS"
- *                 message:
- *                   type: string
- *                   example: "localIP and port are required"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
  *         description: 권한 없음 (스튜디오만 가능)
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "PERMISSION_DENIED"
- *                 message:
- *                   type: string
- *                   example: "Only studio can update listen server info"
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/:roomId/listen-server', verifyToken, async (req, res) => {
   try {
@@ -1826,68 +1358,31 @@ router.post('/:roomId/listen-server', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 code:
- *                   type: string
- *                   example: "SUCCESS"
- *                 message:
- *                   type: string
- *                   example: "Concert is now open"
- *                 isOpen:
- *                   type: boolean
- *                   example: true
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     isOpen:
+ *                       type: boolean
+ *                       example: true
  *       400:
  *         description: 잘못된 요청
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "MISSING_FIELDS"
- *                 message:
- *                   type: string
- *                   example: "isOpen (boolean) is required"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "UNAUTHORIZED"
- *                 message:
- *                   type: string
- *                   example: "Authentication failed"
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       403:
  *         description: 권한 없음 (스튜디오만 가능)
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 code:
- *                   type: string
- *                   example: "PERMISSION_DENIED"
- *                 message:
- *                   type: string
- *                   example: "Only studio can toggle concert open status"
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/:roomId/toggle-open', verifyToken, async (req, res) => {
   try {
@@ -1957,22 +1452,30 @@ router.post('/:roomId/toggle-open', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 code:
- *                   type: string
- *                 message:
- *                   type: string
- *                 roomId:
- *                   type: string
- *       403:
- *         description: 권한 없음 (스튜디오만 가능)
- *       404:
- *         description: 콘서트를 찾을 수 없음
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     roomId:
+ *                       type: string
  *       401:
  *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: 권한 없음 (스튜디오만 가능)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: 콘서트를 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete('/:roomId', verifyToken, async (req, res) => {
   try {
@@ -2026,24 +1529,30 @@ router.delete('/:roomId', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *                 expiredCount:
- *                   type: integer
- *                   description: 만료된 콘서트 수
- *                 expiredRooms:
- *                   type: array
- *                   items:
- *                     type: string
- *                   description: 만료된 콘서트 방 ID 목록
- *       403:
- *         description: 프로덕션 환경에서는 사용 불가
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     expiredCount:
+ *                       type: integer
+ *                       description: 만료된 콘서트 수
+ *                     expiredRooms:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       description: 만료된 콘서트 방 ID 목록
  *       401:
  *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: 프로덕션 환경에서는 사용 불가
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/dev/expire-all', verifyToken, async (req, res) => {
   try {

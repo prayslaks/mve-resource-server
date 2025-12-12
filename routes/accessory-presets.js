@@ -9,6 +9,20 @@ const {
   deletePreset
 } = require('../services/accessory-preset-service');
 
+// DB snake_case를 API camelCase로 변환
+function convertPresetToCamelCase(preset) {
+  return {
+    id: preset.id,
+    userId: preset.user_id,
+    presetName: preset.preset_name,
+    description: preset.description,
+    accessories: preset.accessories,
+    isPublic: preset.is_public,
+    createdAt: preset.created_at,
+    updatedAt: preset.updated_at
+  };
+}
+
 /**
  * @swagger
  * /api/presets/save:
@@ -47,11 +61,37 @@ const {
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AccessoryPreset'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     presetName:
+ *                       type: string
+ *                       example: '정우의 프리셋'
+ *                     description:
+ *                       type: string
+ *                       example: '견고하고 명징하게 직조해낸 한 장의 마스터피스'
+ *                     isPublic:
+ *                       type: boolean
+ *                       example: true
  *       400:
  *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: 중복된 프리셋 이름
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 /**
  * POST /api/presets/save
@@ -100,7 +140,9 @@ router.post('/save', verifyToken, async (req, res) => {
       success: true,
       code: 'SUCCESS',
       message: 'Operation successful',
-      preset
+      presetName: presetName,
+      description: description,
+      isPublic: isPublic,
     });
   } catch (error) {
     console.error('[PRESET] 프리셋 저장 에러:', error);
@@ -145,20 +187,28 @@ router.post('/save', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 count:
- *                   type: integer
- *                 presets:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/AccessoryPreset'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     count:
+ *                       type: integer
+ *                     presets:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/AccessoryPreset'
  *       401:
  *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/list', verifyToken, async (req, res) => {
   try {
@@ -173,7 +223,7 @@ router.get('/list', verifyToken, async (req, res) => {
       code: 'SUCCESS',
       message: 'Operation successful',
       count: presets.length,
-      presets
+      presets: presets.map(convertPresetToCamelCase)
     });
   } catch (error) {
     console.error('[PRESET] 프리셋 목록 조회 에러:', error);
@@ -208,20 +258,36 @@ router.get('/list', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 preset:
- *                   $ref: '#/components/schemas/AccessoryPreset'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/BaseResponse'
+ *                 - type: object
+ *                   properties:
+ *                     preset:
+ *                       $ref: '#/components/schemas/AccessoryPreset'
  *       400:
  *         description: 잘못된 요청
- *       403:
- *         description: 접근 권한 없음
- *       404:
- *         description: 프리셋을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: 접근 권한 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: 프리셋을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/:id', verifyToken, async (req, res) => {
   try {
@@ -243,7 +309,7 @@ router.get('/:id', verifyToken, async (req, res) => {
       success: true,
       code: 'SUCCESS',
       message: 'Operation successful',
-      preset
+      preset: convertPresetToCamelCase(preset)
     });
   } catch (error) {
     console.error('[PRESET] 프리셋 조회 에러:', error);
@@ -311,17 +377,37 @@ router.get('/:id', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/AccessoryPreset'
+ *               $ref: '#/components/schemas/BaseResponse'
  *       400:
  *         description: 잘못된 요청
- *       403:
- *         description: 접근 권한 없음
- *       404:
- *         description: 프리셋을 찾을 수 없음
- *       409:
- *         description: 중복된 프리셋 이름
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: 접근 권한 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: 프리셋을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: 중복된 프리셋 이름
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.put('/:id', verifyToken, async (req, res) => {
   try {
@@ -352,15 +438,14 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (accessories !== undefined) updates.accessories = accessories;
     if (isPublic !== undefined) updates.isPublic = isPublic;
 
-    const preset = await updatePreset(presetId, req.userId, updates);
+    await updatePreset(presetId, req.userId, updates);
 
     console.log(`[PRESET] 프리셋 업데이트: ${presetId} by ${req.email}`);
 
     res.json({
       success: true,
       code: 'SUCCESS',
-      message: 'Operation successful',
-      preset
+      message: 'Operation successful'
     });
   } catch (error) {
     console.error('[PRESET] 프리셋 업데이트 에러:', error);
@@ -421,20 +506,31 @@ router.put('/:id', verifyToken, async (req, res) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
+ *               $ref: '#/components/schemas/BaseResponse'
  *       400:
  *         description: 잘못된 요청
- *       403:
- *         description: 접근 권한 없음
- *       404:
- *         description: 프리셋을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: 접근 권한 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: 프리셋을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
