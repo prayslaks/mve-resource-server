@@ -1,39 +1,3 @@
-/**
- * @swagger
- * components:
- *   schemas:
- *     AudioFile:
- *       type: object
- *       properties:
- *         id:
- *           type: integer
- *           example: 1
- *         title:
- *           type: string
- *           example: "Sample Track 1"
- *         artist:
- *           type: string
- *           nullable: true
- *           example: "Artist A"
- *         file_path:
- *           type: string
- *           example: "audio/sample1.m4a"
- *         file_size:
- *           type: integer
- *           example: 3145728
- *         duration:
- *           type: integer
- *           nullable: true
- *           description: 재생 시간 (초)
- *           example: 180
- *         format:
- *           type: string
- *           example: "m4a"
- *         created_at:
- *           type: string
- *           format: date-time
- */
-
 const express = require('express');
 const pool = require('../db');
 const verifyToken = require('../middleware/auth');

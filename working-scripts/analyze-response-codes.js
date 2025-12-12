@@ -85,7 +85,7 @@ function main() {
     allFiles = allFiles.concat(files);
   });
 
-  console.log(`📁 검색 대상 파일: ${allFiles.length}개`);
+  console.log(`검색 대상 파일: ${allFiles.length}개`);
   console.log();
 
   // 모든 파일에서 code 패턴 추출
@@ -100,8 +100,8 @@ function main() {
     }
   });
 
-  console.log(`✅ 총 발견된 code 패턴: ${allCodes.length}개`);
-  console.log(`📄 code가 포함된 파일: ${fileWithCodes.length}개`);
+  console.log(`총 발견된 code 패턴: ${allCodes.length}개`);
+  console.log(`code가 포함된 파일: ${fileWithCodes.length}개`);
   console.log();
 
   // 통계 집계
@@ -125,7 +125,7 @@ function main() {
 
   // 결과 출력
   console.log('='.repeat(80));
-  console.log('📊 Error Code 통계 (빈도순)');
+  console.log('Error Code 통계 (빈도순)');
   console.log('='.repeat(80));
   console.log();
 
@@ -135,7 +135,7 @@ function main() {
 
   console.log();
   console.log('='.repeat(80));
-  console.log('📋 상세 정보 (코드별 사용 위치)');
+  console.log('상세 정보 (코드별 사용 위치)');
   console.log('='.repeat(80));
   console.log();
 
@@ -156,7 +156,7 @@ function main() {
 
   console.log();
   console.log('='.repeat(80));
-  console.log('📈 요약');
+  console.log('요약');
   console.log('='.repeat(80));
   console.log(`총 고유 코드 종류: ${sortedCodes.length}개`);
   console.log(`총 사용 횟수: ${allCodes.length}회`);
@@ -187,7 +187,7 @@ function main() {
 
   const outputFile = path.join(outputDir, 'response-code-statistics.json');
   fs.writeFileSync(outputFile, JSON.stringify(outputData, null, 2), 'utf-8');
-  console.log(`💾 상세 통계가 ${path.relative(process.cwd(), outputFile)}에 저장되었습니다.`);
+  console.log(`상세 통계가 ${path.relative(process.cwd(), outputFile)}에 저장되었습니다.`);
   console.log();
 }
 

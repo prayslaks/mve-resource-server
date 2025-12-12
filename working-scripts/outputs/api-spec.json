@@ -111,6 +111,158 @@
           }
         }
       },
+      "AudioFile": {
+        "type": "object",
+        "description": "음원 파일 정보",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "음원 ID",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "description": "음원 제목",
+            "example": "Sample Track 1"
+          },
+          "artist": {
+            "type": "string",
+            "nullable": true,
+            "description": "아티스트",
+            "example": "Artist A"
+          },
+          "file_path": {
+            "type": "string",
+            "description": "파일 경로",
+            "example": "audio/sample1.m4a"
+          },
+          "file_size": {
+            "type": "integer",
+            "description": "파일 크기 (bytes)",
+            "example": 3145728
+          },
+          "duration": {
+            "type": "integer",
+            "nullable": true,
+            "description": "재생 시간 (초)",
+            "example": 180
+          },
+          "format": {
+            "type": "string",
+            "description": "파일 포맷",
+            "example": "m4a"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "생성 시간"
+          }
+        }
+      },
+      "ModelInfo": {
+        "type": "object",
+        "description": "3D 모델 파일 정보",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "모델 ID",
+            "example": 1
+          },
+          "model_name": {
+            "type": "string",
+            "description": "모델 이름",
+            "example": "My Avatar"
+          },
+          "file_path": {
+            "type": "string",
+            "description": "파일 경로",
+            "example": "models/user1/avatar.glb"
+          },
+          "file_size": {
+            "type": "integer",
+            "description": "파일 크기 (bytes)",
+            "example": 5242880
+          },
+          "thumbnail_path": {
+            "type": "string",
+            "nullable": true,
+            "description": "썸네일 경로",
+            "example": "models/user1/avatar_thumb.jpg"
+          },
+          "is_ai_generated": {
+            "type": "boolean",
+            "description": "AI로 생성된 모델 여부 (true: AI 생성, false: 직접 업로드)",
+            "example": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "생성 시간"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "수정 시간"
+          }
+        }
+      },
+      "AIJobStatus": {
+        "type": "object",
+        "description": "AI 작업 상태 정보",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "작업 ID",
+            "example": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "description": "작업 상태",
+            "example": "processing"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "AI 생성 프롬프트",
+            "example": "A futuristic robot character"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "작업 생성 시간"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "작업 완료 시간"
+          },
+          "model_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "생성된 모델 ID (완료 시)",
+            "example": 42
+          },
+          "download_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "다운로드 URL (완료 시)",
+            "example": "https://example.com/models/generated/model.glb"
+          },
+          "error_message": {
+            "type": "string",
+            "nullable": true,
+            "description": "에러 메시지 (실패 시)",
+            "example": "Model generation failed"
+          }
+        }
+      },
       "Accessory": {
         "type": "object",
         "description": "아바타 액세서리",
@@ -124,53 +276,24 @@
           "socketName": {
             "type": "string",
             "description": "소켓 이름",
-            "example": "head_socket"
+            "example": "hand_socket"
           },
           "relativeLocation": {
-            "$ref": "#/components/schemas/Vector3D",
-            "type": "object",
-            "properties": {
-              "x": {
-                "type": "number",
-                "format": "float"
-              },
-              "y": {
-                "type": "number",
-                "format": "float"
-              },
-              "z": {
-                "type": "number",
-                "format": "float"
-              }
-            }
+            "$ref": "#/components/schemas/Vector3D"
           },
           "relativeRotation": {
-            "$ref": "#/components/schemas/Rotator",
-            "type": "object",
-            "properties": {
-              "pitch": {
-                "type": "number",
-                "format": "float"
-              },
-              "yaw": {
-                "type": "number",
-                "format": "float"
-              },
-              "roll": {
-                "type": "number",
-                "format": "float"
-              }
-            }
-          },
-          "modelUrl": {
-            "type": "string",
-            "description": "3D 모델 URL",
-            "example": "/models/hat.glb"
+            "$ref": "#/components/schemas/Rotator"
           },
           "relativeScale": {
             "type": "number",
             "format": "float",
+            "description": "상대적 스케일",
             "example": 1
+          },
+          "modelUrl": {
+            "type": "string",
+            "description": "3D 모델 URL",
+            "example": "https://example.com/models/microphone.glb"
           }
         }
       },
@@ -220,14 +343,6 @@
             "type": "string",
             "format": "date-time",
             "description": "수정 시간"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
           }
         }
       },
@@ -366,127 +481,6 @@
             "type": "integer",
             "description": "현재 관객 수",
             "example": 5
-          }
-        }
-      },
-      "AudioFile": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "example": 1
-          },
-          "title": {
-            "type": "string",
-            "example": "Sample Track 1"
-          },
-          "artist": {
-            "type": "string",
-            "nullable": true,
-            "example": "Artist A"
-          },
-          "file_path": {
-            "type": "string",
-            "example": "audio/sample1.m4a"
-          },
-          "file_size": {
-            "type": "integer",
-            "example": 3145728
-          },
-          "duration": {
-            "type": "integer",
-            "nullable": true,
-            "description": "재생 시간 (초)",
-            "example": 180
-          },
-          "format": {
-            "type": "string",
-            "example": "m4a"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "ModelInfo": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "example": 1
-          },
-          "model_name": {
-            "type": "string",
-            "example": "My Avatar"
-          },
-          "file_path": {
-            "type": "string",
-            "example": "models/user1/avatar.glb"
-          },
-          "file_size": {
-            "type": "integer",
-            "example": 5242880
-          },
-          "thumbnail_path": {
-            "type": "string",
-            "nullable": true,
-            "example": "models/user1/avatar_thumb.jpg"
-          },
-          "is_ai_generated": {
-            "type": "boolean",
-            "example": false,
-            "description": "AI로 생성된 모델 여부 (true: AI 생성, false: 직접 업로드)"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "AIJobStatus": {
-        "type": "object",
-        "properties": {
-          "job_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "processing",
-              "completed",
-              "failed"
-            ]
-          },
-          "prompt": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "completed_at": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "model_id": {
-            "type": "integer",
-            "nullable": true
-          },
-          "download_url": {
-            "type": "string",
-            "nullable": true
-          },
-          "error_message": {
-            "type": "string",
-            "nullable": true
           }
         }
       }
