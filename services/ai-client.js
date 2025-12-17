@@ -66,16 +66,17 @@ class AIClient {
             console.log(`[AI Client] API Full URL: ${fullURL}`);
             console.log(`[AI Client] 요청 전송 중...`);
 
+            // 리스폰스는 버퍼 형태로
             const response = await axios.post(fullURL, formData, {
                 headers: formData.getHeaders(),
                 timeout: this.timeout,
                 maxContentLength: Infinity,
-                maxBodyLength: Infinity
+                maxBodyLength: Infinity,
+                responseType: 'arraybuffer'
             });
 
             // 응답 처리
             console.log(`[AI Client] 응답 코드: ${response.status}`);
-            console.log(`[AI Client] 응답 내용:`, response.data);
 
             if (response.status === 200) {
                 console.log('[AI Client] ✓ 생성 요청이 큐에 등록되었습니다');

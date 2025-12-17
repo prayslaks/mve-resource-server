@@ -463,7 +463,15 @@ router.use(verifyToken);
  * /api/models/generate:
  *   post:
  *     summary: AI 3D 모델 생성 요청
- *     description: 프롬프트 또는 이미지를 기반으로 AI가 3D 모델을 생성합니다. 비동기 처리되며 즉시 jobId를 반환합니다.
+ *     description: |
+ *       프롬프트 또는 이미지를 기반으로 AI가 3D 모델을 생성합니다. 비동기 처리되며 즉시 job_id를 반환합니다.
+ *
+ *       **백엔드 플로우:**
+ *       1. Resource Server가 요청을 받아 job_id 생성 및 Redis에 저장
+ *       2. AI Server의 `/generate_3D_obj` 엔드포인트로 요청 전달 (ai-client.js 통해)
+ *       3. AI Server가 비동기로 3D 모델 생성 처리
+ *       4. 생성 완료 시 S3 또는 로컬에 GLB 파일 저장 및 DB 등록
+ *       5. Redis job 상태를 'completed'로 업데이트
  *     tags:
  *       - Models
  *       - AI Generation
@@ -736,7 +744,7 @@ router.post('/generate', verifyToken, uploadThumbnail.single('image'), async (re
         res.status(500).json({
             success: false,
             code: 'INTERNAL_SERVER_ERROR',
-            message: 'Failed to process AI generation request'
+            message: 'Failed to process AI ge"errorMessage": "Invalid URL"neration request'
         });
     }
 });
