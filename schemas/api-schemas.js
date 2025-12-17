@@ -113,6 +113,7 @@ module.exports = {
   AudioFile: {
     type: 'object',
     description: '음원 파일 정보',
+    required: ['id', 'title', 'filePath', 'fileSize', 'format', 'createdAt'],
     properties: {
       id: {
         type: 'integer',
@@ -165,6 +166,7 @@ module.exports = {
   ModelInfo: {
     type: 'object',
     description: '3D 모델 파일 정보',
+    required: ['id', 'modelName', 'filePath', 'fileSize', 'isAiGenerated', 'createdAt', 'updatedAt'],
     properties: {
       id: {
         type: 'integer',
@@ -213,6 +215,7 @@ module.exports = {
   AIJobStatus: {
     type: 'object',
     description: 'AI 작업 상태 정보',
+    required: ['jobId', 'status', 'prompt', 'createdAt'],
     properties: {
       jobId: {
         type: 'string',
@@ -264,20 +267,21 @@ module.exports = {
   },
 
   DeletedModelInfo: {
-  type: 'object',
-      description: '삭제된 모델 정보',
-      properties: {
-        id: {
-          type: 'integer',
-          description: '모델 ID',
-          example: 1
-        },
-        modelName: {
-          type: 'string',
-          description: '모델 이름',
-          example: 'My Avatar'
-        }
+    type: 'object',
+    description: '삭제된 모델 정보',
+    required: ['id', 'modelName'],
+    properties: {
+      id: {
+        type: 'integer',
+        description: '모델 ID',
+        example: 1
+      },
+      modelName: {
+        type: 'string',
+        description: '모델 이름',
+        example: 'My Avatar'
       }
+    }
   },
 
   // ============================================
@@ -316,6 +320,7 @@ module.exports = {
   AccessoryPreset: {
     type: 'object',
     description: '액세서리 프리셋',
+    required: ['id', 'userId', 'presetName', 'accessories', 'isPublic', 'createdAt', 'updatedAt'],
     properties: {
       id: {
         type: 'integer',
@@ -427,6 +432,7 @@ module.exports = {
   ConcertInfo: {
     type: 'object',
     description: '콘서트 정보',
+    required: ['roomId', 'studioUserId', 'studioName', 'concertName', 'songs', 'accessories', 'maxAudience', 'createdAt', 'isOpen', 'currentSong', 'currentAudience'],
     properties: {
       roomId: {
         type: 'string',
