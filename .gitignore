@@ -39,3 +39,6 @@ ssl/
 
 # 로컬 파일 스토리지 경로
 files/
+
+# Working Scripts Outputs
+working-scripts/outputs/
