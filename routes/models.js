@@ -1687,10 +1687,221 @@ router.post('/:id/thumbnail', uploadThumbnail.single('thumbnail'), async (req, r
 
 /**
  * @swagger
+ * /api/models/{modelId}/download-url:
+ *   get:
+ *     summary: 모델 다운로드 URL 발급 (프로토타입)
+ *     description: |
+ *       모델 ID로 다운로드 가능한 URL을 발급합니다.
+ *
+ *       - 로컬 스토리지: 다운로드 엔드포인트 URL 반환
+ *       - S3 스토리지: PresignedURL 반환 (5분 만료)
+ *
+ *       **프로토타입 단계**: 인증된 사용자는 모든 모델의 다운로드 URL을 요청할 수 있습니다.
+ *     tags:
+ *       - Models
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: modelId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 다운로드할 모델 ID
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: 다운로드 URL 발급 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [success, code, message, url, expiresIn, storageType]
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 code:
+ *                   type: string
+ *                   example: "DOWNLOAD_URL_SUCCESS"
+ *                 message:
+ *                   type: string
+ *                   example: "Download URL generated successfully"
+ *                 url:
+ *                   type: string
+ *                   format: uri
+ *                   example: "http://localhost:3001/api/models/1/download"
+ *                   description: 다운로드 URL (로컬) 또는 PresignedURL (S3)
+ *                 expiresIn:
+ *                   type: integer
+ *                   example: 300
+ *                   description: URL 만료 시간 (초, S3만 해당)
+ *                 storageType:
+ *                   type: string
+ *                   enum: [local, s3]
+ *                   example: "local"
+ *                   description: 스토리지 타입
+ *       401:
+ *         description: 인증 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [success, code, message]
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "UNAUTHORIZED"
+ *                 message:
+ *                   type: string
+ *                   example: "Unauthorized"
+ *       404:
+ *         description: 모델을 찾을 수 없음
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [success, code, message]
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "MODEL_NOT_FOUND"
+ *                 message:
+ *                   type: string
+ *                   example: "Model not found"
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [success, code, message]
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "INTERNAL_SERVER_ERROR"
+ *                 message:
+ *                   type: string
+ *                   example: "Internal server error"
+ */
+// 5-1. 모델 다운로드 URL 발급 (프로토타입 - 모든 인증된 사용자 접근 가능)
+router.get('/:modelId/download-url', async (req, res) => {
+    try {
+        const { modelId } = req.params;
+
+        console.log('[MODEL-DOWNLOAD-URL] 다운로드 URL 발급 시도:', {
+            modelId,
+            requesterId: req.userId,
+            timestamp: new Date().toISOString()
+        });
+
+        // 모델 정보 조회 (소유권 체크 없음 - 프로토타입)
+        const result = await pool.query(
+            `SELECT id, model_name, file_path, user_id
+             FROM user_models
+             WHERE id = $1`,
+            [modelId]
+        );
+
+        if (result.rows.length === 0) {
+            console.log('[MODEL-DOWNLOAD-URL] ERROR: 모델 없음', {
+                modelId
+            });
+            return res.status(404).json({
+                success: false,
+                code: 'MODEL_NOT_FOUND',
+                message: 'Model not found'
+            });
+        }
+
+        const model = result.rows[0];
+        const isS3 = process.env.STORAGE_TYPE === 's3';
+
+        let downloadUrl;
+        let expiresIn = null;
+
+        if (isS3) {
+            // S3 PresignedURL 생성 (5분 만료)
+            const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
+            const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+
+            const s3Client = new S3Client({ region: process.env.AWS_REGION });
+            const command = new GetObjectCommand({
+                Bucket: process.env.S3_BUCKET,
+                Key: model.file_path
+            });
+
+            expiresIn = 300; // 5분
+            downloadUrl = await getSignedUrl(s3Client, command, { expiresIn });
+
+            console.log('[MODEL-DOWNLOAD-URL] SUCCESS (S3):', {
+                modelId: model.id,
+                modelName: model.model_name,
+                expiresIn
+            });
+        } else {
+            // 로컬 스토리지 - 다운로드 엔드포인트 URL 반환
+            const baseUrl = process.env.RESOURCE_SERVER_URL || 'http://localhost:3001';
+            downloadUrl = `${baseUrl}/api/models/${model.id}/download`;
+
+            console.log('[MODEL-DOWNLOAD-URL] SUCCESS (Local):', {
+                modelId: model.id,
+                modelName: model.model_name
+            });
+        }
+
+        res.json({
+            success: true,
+            code: 'DOWNLOAD_URL_SUCCESS',
+            message: 'Download URL generated successfully',
+            url: downloadUrl,
+            expiresIn: expiresIn,
+            storageType: isS3 ? 's3' : 'local'
+        });
+
+    } catch (error) {
+        console.error('[MODEL-DOWNLOAD-URL] EXCEPTION:', {
+            message: error.message,
+            stack: error.stack,
+            code: error.code,
+            timestamp: new Date().toISOString()
+        });
+
+        if (error.code) {
+            return res.status(500).json({
+                success: false,
+                code: 'DATABASE_ERROR',
+                message: 'Database error'
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Internal server error'
+        });
+    }
+});
+
+/**
+ * @swagger
  * /api/models/{id}/download:
  *   get:
- *     summary: 모델 파일 다운로드
- *     description: 특정 모델의 GLB 파일을 다운로드합니다.
+ *     summary: 모델 파일 다운로드 (로컬 스토리지 전용)
+ *     description: |
+ *       로컬 스토리지 환경에서 모델 파일을 직접 다운로드합니다.
+ *       이 API는 download-url API에서 반환된 URL을 통해 호출됩니다.
+ *
+ *       **프로토타입 단계**: 인증된 사용자는 모든 모델을 다운로드할 수 있습니다.
  *     tags:
  *       - Models
  *     security:
@@ -1716,47 +1927,80 @@ router.post('/:id/thumbnail', uploadThumbnail.single('thumbnail'), async (req, r
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               type: object
+ *               required: [success, code, message]
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "UNAUTHORIZED"
+ *                 message:
+ *                   type: string
+ *                   example: "Unauthorized"
  *       404:
  *         description: 모델을 찾을 수 없음
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               type: object
+ *               required: [success, code, message]
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "MODEL_NOT_FOUND"
+ *                 message:
+ *                   type: string
+ *                   example: "Model not found"
  *       500:
  *         description: 서버 오류
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               type: object
+ *               required: [success, code, message]
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 code:
+ *                   type: string
+ *                   example: "INTERNAL_SERVER_ERROR"
+ *                 message:
+ *                   type: string
+ *                   example: "Internal server error"
  */
-// 5. 모델 파일 다운로드 (자신의 모델만)
+// 5. 모델 파일 다운로드 (로컬 스토리지 전용, 프로토타입 - 모든 인증된 사용자 접근 가능)
 router.get('/:id/download', async (req, res) => {
     try {
         const { id } = req.params;
 
         console.log('[MODEL-DOWNLOAD] 모델 다운로드 시도:', {
             id,
-            userId: req.userId,
+            requesterId: req.userId,
             timestamp: new Date().toISOString()
         });
 
+        // 모델 정보 조회 (소유권 체크 없음 - 프로토타입)
         const result = await pool.query(
             `SELECT id, model_name, file_path
              FROM user_models
-             WHERE id = $1 AND user_id = $2`,
-            [id, req.userId]
+             WHERE id = $1`,
+            [id]
         );
 
         if (result.rows.length === 0) {
-            console.log('[MODEL-DOWNLOAD] ERROR: 모델 없음 또는 권한 없음', {
-                id,
-                userId: req.userId
+            console.log('[MODEL-DOWNLOAD] ERROR: 모델 없음', {
+                id
             });
             return res.status(404).json({
                 success: false,
                 code: 'MODEL_NOT_FOUND',
-                message: 'Model not found or access denied'
+                message: 'Model not found'
             });
         }
 
@@ -1796,15 +2040,14 @@ router.get('/:id/download', async (req, res) => {
             return res.status(500).json({
                 success: false,
                 code: 'DATABASE_ERROR',
-                message: 'Database error',
-                code: error.code
+                message: 'Database error'
             });
         }
 
         res.status(500).json({
             success: false,
             code: 'INTERNAL_SERVER_ERROR',
-            message: 'Server error'
+            message: 'Internal server error'
         });
     }
 });
