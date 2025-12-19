@@ -62,9 +62,13 @@ router.post('/dev/upload-from-ai', uploadModelWithThumbnail.fields([
 
         // user_id는 body에서 받거나 기본값 1 사용 (개발용)
         const user_id = req.body.user_id || 1;
-        const model_name = req.body.model_name ||
-                          req.body.prompt?.substring(0, 100) ||
-                          path.basename(modelFile.originalname, path.extname(modelFile.originalname));
+
+        // 모델명 생성 (타임스탬프 추가로 중복 방지)
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        let baseModelName = req.body.model_name ||
+                           req.body.prompt?.substring(0, 80) ||
+                           path.basename(modelFile.originalname, path.extname(modelFile.originalname)).substring(0, 80);
+        const model_name = `${baseModelName}_${timestamp}`;
 
         // 파일 경로를 상대 경로로 저장
         const file_path = path.relative(
@@ -255,11 +259,11 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
             });
         }
 
-        // Redis에서 job 정보 확인
-        const jobKey = `job:${job_id}`;
-        const jobData = await redisClient.get(jobKey);
+        // Redis에서 job 정보 확인 (키 형식 통일)
+        const jobKey = `ai:job:${job_id}`;
+        const jobData = await redisClient.hGetAll(jobKey);
 
-        if (!jobData) {
+        if (!jobData || Object.keys(jobData).length === 0) {
             console.log('[AI-UPLOAD] ERROR: Job not found', { job_id });
 
             // 업로드된 파일 삭제
@@ -278,7 +282,7 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
             });
         }
 
-        const job = JSON.parse(jobData);
+        const job = jobData; // hGetAll은 이미 객체를 반환
 
         // Secret 검증
         if (job.secret !== job_secret) {
@@ -302,7 +306,7 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
 
         // 상태 검증: 이미 완료되었거나 실패한 작업인지 확인
         if (job.status === 'completed') {
-            console.log('[AI-UPLOAD] ERROR: Job already completed', { job_id, model_id: job.model_id });
+            console.log('[AI-UPLOAD] ERROR: Job already completed', { job_id, model_id: job.modelId || job.model_id });
 
             // 업로드된 파일 삭제
             if (req.files) {
@@ -317,7 +321,7 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
                 success: false,
                 code: 'JOB_ALREADY_COMPLETED',
                 message: 'This job has already been completed',
-                modelId: job.model_id
+                modelId: job.modelId || job.model_id
             });
         }
 
@@ -326,14 +330,56 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
             // failed 상태는 재시도를 허용 (AI 서버가 재시도하는 경우)
         }
 
+        // DB 중복 체크: 이미 해당 job_id로 모델이 생성되었는지 확인
+        const baseModelName = job.prompt.substring(0, 60) || 'model';
+        const model_name = `${baseModelName}_${job_id}`;
+
+        const duplicateCheck = await pool.query(
+            `SELECT id FROM user_models WHERE user_id = $1 AND model_name = $2`,
+            [job.user_id, model_name]
+        );
+
+        if (duplicateCheck.rows.length > 0) {
+            console.log('[AI-UPLOAD] ERROR: Model already exists in DB', {
+                job_id,
+                model_id: duplicateCheck.rows[0].id,
+                model_name
+            });
+
+            // 업로드된 파일 삭제
+            if (req.files) {
+                Object.values(req.files).flat().forEach(file => {
+                    fs.unlink(file.path, err => {
+                        if (err) console.error('[AI-UPLOAD] Failed to delete file:', err);
+                    });
+                });
+            }
+
+            // Redis 상태를 completed로 업데이트 (이미 완료된 작업)
+            await redisClient.hSet(jobKey, {
+                status: 'completed',
+                modelId: duplicateCheck.rows[0].id.toString(),
+                completedAt: new Date().toISOString()
+            });
+
+            return res.status(409).json({
+                success: false,
+                code: 'MODEL_ALREADY_EXISTS',
+                message: 'Model with this job_id already exists',
+                modelId: duplicateCheck.rows[0].id
+            });
+        }
+
         // 파일 검증
         if (!req.files || !req.files.model || req.files.model.length === 0) {
             console.log('[AI-UPLOAD] ERROR: 모델 파일 누락');
 
             // Redis 상태 업데이트: failed
-            job.status = 'failed';
-            job.error = 'Model file missing';
-            await redisClient.setEx(jobKey, 1800, JSON.stringify(job)); // 30분
+            await redisClient.hSet(jobKey, {
+                status: 'failed',
+                errorMessage: 'Model file missing',
+                completedAt: new Date().toISOString()
+            });
 
             return res.status(400).json({
                 success: false,
@@ -345,8 +391,7 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
         const modelFile = req.files.model[0];
         const thumbnailFile = req.files.thumbnail ? req.files.thumbnail[0] : null;
 
-        // 모델명은 job의 prompt 또는 파일명에서 추출
-        const model_name = job.prompt.substring(0, 100) || path.basename(modelFile.originalname, path.extname(modelFile.originalname));
+        // model_name은 이미 위에서 생성됨 (중복 체크에서 사용)
 
         // 파일 경로를 상대 경로로 저장
         const file_path = path.relative(
@@ -368,10 +413,11 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
         );
 
         // Redis 상태 업데이트: completed
-        job.status = 'completed';
-        job.model_id = result.rows[0].id;
-        job.completed_at = new Date().toISOString();
-        await redisClient.setEx(jobKey, 1800, JSON.stringify(job)); // 30분
+        await redisClient.hSet(jobKey, {
+            status: 'completed',
+            modelId: result.rows[0].id.toString(),
+            completedAt: new Date().toISOString()
+        });
 
         console.log('[AI-UPLOAD] SUCCESS:', {
             job_id,
@@ -417,14 +463,12 @@ router.post('/upload-from-ai', uploadModelWithThumbnail.fields([
         // Redis 상태 업데이트: failed
         if (req.body.job_id) {
             try {
-                const jobKey = `job:${req.body.job_id}`;
-                const jobData = await redisClient.get(jobKey);
-                if (jobData) {
-                    const job = JSON.parse(jobData);
-                    job.status = 'failed';
-                    job.error = error.message;
-                    await redisClient.setEx(jobKey, 1800, JSON.stringify(job));
-                }
+                const jobKey = `ai:job:${req.body.job_id}`;
+                await redisClient.hSet(jobKey, {
+                    status: 'failed',
+                    errorMessage: error.message,
+                    completedAt: new Date().toISOString()
+                });
             } catch (redisError) {
                 console.error('[AI-UPLOAD] Failed to update Redis:', redisError);
             }
@@ -675,7 +719,9 @@ router.post('/generate', verifyToken, uploadThumbnail.single('image'), async (re
                 }
 
                 // DB에 모델 정보 저장
-                const model_name = prompt.substring(0, 100);
+                // Job ID 사용으로 중복 방지 및 파일명과 일관성 유지
+                const baseModelName = prompt.substring(0, 60);
+                const model_name = `${baseModelName}_${job_id}`;
 
                 const dbResult = await pool.query(
                     `INSERT INTO user_models (user_id, model_name, file_path, file_size, thumbnail_path, is_ai_generated)
