@@ -1295,15 +1295,22 @@ router.post('/:roomId/listen-server', verifyToken, async (req, res) => {
       });
     }
 
-    // 리슨 서버 정보 업데이트
+    // 클라이언트의 퍼블릭 IP 자동 감지
+    // X-Forwarded-For (프록시 환경) 또는 req.ip (직접 연결) 사용
+    const detectedPublicIP = (req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress || '')
+      .split(',')[0] // X-Forwarded-For는 여러 IP가 콤마로 구분될 수 있음 (첫번째가 클라이언트 IP)
+      .trim()
+      .replace(/^::ffff:/, ''); // IPv6 매핑된 IPv4 주소 정리 (::ffff:192.168.1.1 -> 192.168.1.1)
+
+    // 리슨 서버 정보 업데이트 (자동 감지된 publicIP 사용, 클라이언트가 명시적으로 제공한 경우 우선)
     const updatedConcert = await updateListenServer(roomId, {
       localIP,
       port,
-      publicIP,
-      publicPort
+      publicIP: publicIP || detectedPublicIP, // 클라이언트 제공값이 있으면 우선, 없으면 자동 감지
+      publicPort: publicPort || port // publicPort를 따로 안 보내면 port와 동일하다고 가정
     });
 
-    console.log(`[CONCERT] 리슨 서버 정보 등록: ${roomId} - ${localIP}:${port}`);
+    console.log(`[CONCERT] 리슨 서버 정보 등록: ${roomId} - Local: ${localIP}:${port}, Public: ${updatedConcert.listenServer.publicIP}:${updatedConcert.listenServer.publicPort}`);
 
     res.json({
       success: true,
