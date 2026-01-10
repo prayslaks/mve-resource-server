@@ -1,12 +1,13 @@
 # MVE Resource Server
 
-원티드 포텐업 [언리얼 & AI] 최종 프로젝트의 **리소스 파일 경로 관리** 서버입니다.
-
-음원 파일 스트리밍 및 사용자별 3D 모델 파일 경로를 관리하는 Node.js API 서버입니다.
+원티드 포텐업 [언리얼 & AI] 최종 프로젝트의 **리소스 파일 경로 관리** 서버입니다.<br>
+음원 파일 스트리밍 및 사용자별 3D 모델 파일 경로를 관리하는 Node.js API 서버입니다.<br>
+Amazon Web Services EC2 Instance Ubuntu에 프로젝트를 배포하는 걸 상정합니다.<br>
+단, 로컬 시스템에서도 각종 리소스 기능은 localhost를 통해서 테스트할 수 있습니다.<br>
 
 > **참고**: 이 서버는 파일 경로만 저장하며, 실제 파일은 별도의 파일 서버에 저장됩니다. 인증은 [mve-login-server](https://github.com/prayslaks/mve-login-server)에서 발급한 JWT 토큰을 사용합니다.
 
-**⚠️ 주의**: Claude Code 바이브 코딩으로 개발했으므로, 함부로 실제 서비스에 사용하다 보안 문제가 발생해도 책임지지 않습니다.
+**⚠️ 주의** : Claude Code 바이브 코딩으로 개발했으므로, 함부로 실제 서비스에 사용하다 보안 문제가 발생해도 책임지지 않습니다.
 
 ---
 
@@ -30,21 +31,23 @@
 ### 음원 파일 (공용 - 로그인한 모든 유저 접근 가능)
 - ✅ 음원 목록 조회
 - ✅ 음원 정보 조회
-- ✅ **음원 업로드** (AAC, M4A, MP3, WAV 지원)
-- ✅ **음원 스트리밍** (S3: Presigned URL / 로컬: Range Request)
+- ✅ 음원 업로드 (AAC, M4A, MP3, WAV 지원)
+- ✅ 음원 스트리밍 (S3: Presigned URL / 로컬: Range Request)
 - ✅ 음원 검색 (제목, 아티스트)
 - ✅ 포맷: **AAC (.m4a)** - 압축률 우수, 스트리밍 최적화
-- ✅ **보안**: JWT 인증 필요 (로그인한 유저만 접근 가능)
-- ✅ **스토리지**: AWS S3 (프로덕션) / 로컬 (개발) 환경별 분기
+- ✅ 보안: JWT 인증 필요 (로그인한 유저만 접근 가능)
+- ✅ 스토리지: AWS S3 (프로덕션) / 로컬 (개발) 환경별 분기
 
 ### 3D 모델 파일 (개인 - JWT 인증 필요)
 - ✅ 내 모델 목록 조회
 - ✅ 모델 정보 조회 (자신의 모델만)
-- ✅ 모델 등록 (파일 경로 저장)
+- ✅ 모델 업로드 (파일 직접 업로드)
+- ✅ 모델 썸네일 업로드
+- ✅ 모델 다운로드 (Presigned URL)
 - ✅ 모델 수정
 - ✅ 모델 삭제
 - ✅ 포맷: **GLB** (glTF Binary)
-- ✅ **보안**: 사용자 A는 사용자 B의 모델에 접근 불가
+- ✅ 보안: 사용자 A는 사용자 B의 모델에 접근 불가
 
 ### AI 3D 모델 생성 (JWT 인증 필요)
 - ✅ AI 생성 요청 (프롬프트 기반)
@@ -52,15 +55,37 @@
 - ✅ 작업 상태 조회 (job_id 기반)
 - ✅ 내 작업 목록 조회
 - ✅ AI 서버 콜백 엔드포인트 (작업 완료/실패 알림)
-- ✅ **Redis 기반** 작업 큐 관리
-- ✅ **비동기 처리**: 요청 즉시 응답, AI 서버에서 백그라운드 생성
+- ✅ Redis 기반 작업 큐 관리
+- ✅ 비동기 처리: 요청 즉시 응답, AI 서버에서 백그라운드 생성
+
+### 콘서트 시스템 (JWT 인증 필요)
+- ✅ 콘서트 생성 (스튜디오 사용자)
+- ✅ 콘서트 목록 조회
+- ✅ 콘서트 참가 (관객)
+- ✅ 콘서트 정보 조회
+- ✅ 노래 추가/제거/변경 (스튜디오 전용)
+- ✅ 현재 재생 중인 곡 조회 (관객)
+- ✅ 액세서리 추가/제거/업데이트 (스튜디오 전용)
+- ✅ 리슨 서버 정보 업데이트
+- ✅ 콘서트 개방/비공개 토글
+- ✅ Redis 기반 세션 관리
+
+### 액세서리 프리셋 (JWT 인증 필요)
+- ✅ 프리셋 저장
+- ✅ 프리셋 목록 조회
+- ✅ 프리셋 정보 조회
+- ✅ 프리셋 수정
+- ✅ 프리셋 삭제
+- ✅ 공개/비공개 설정
 
 ### 공통
-- ✅ JWT 토큰 검증 (모든 API에 적용, AI 콜백 제외)
-- ✅ PostgreSQL 데이터베이스
+- ✅ JWT 토큰 검증 (모든 API에 적용)
+- ✅ PostgreSQL 데이터베이스 (리소스 메타데이터 저장)
 - ✅ Redis (콘서트 세션 및 AI 작업 관리)
 - ✅ 상세한 오류 처리 및 디버깅 로그
 - ✅ CORS 지원
+- ✅ OpenAPI 3.0 스펙 자동 생성
+- ✅ Unreal Engine C++ 구조체 연동 검증
 
 ---
 
@@ -208,27 +233,48 @@ Request->SetHeader(TEXT("Authorization"), TEXT("Bearer ") + ActualJWTToken);
 
 ## 데이터베이스 설정
 
-이 서버는 login-server와 동일한 PostgreSQL 데이터베이스를 사용합니다.
+이 서버는 별도의 PostgreSQL 데이터베이스를 사용합니다.
 
-### 1. login-server 데이터베이스가 이미 설정되어 있어야 함
-
-먼저 [mve-login-server](https://github.com/prayslaks/mve-login-server)의 데이터베이스 설정을 완료해야 합니다.
-
-### 2. 리소스 테이블 추가
+### 1. PostgreSQL 데이터베이스 생성
 
 **Windows (관리자 권한):**
 ```powershell
-psql -U postgres -d logindb -f init.sql
+# PostgreSQL에 접속
+psql -U postgres
+
+# 데이터베이스 생성
+CREATE DATABASE mve_resource_db;
+
+# 데이터베이스 연결
+\c mve_resource_db
+
+# 테이블 생성
+\i init.sql
 ```
 
 **Ubuntu:**
 ```bash
-sudo -u postgres psql -d logindb -f init.sql
+# postgres 사용자로 전환
+sudo -u postgres psql
+
+# 데이터베이스 생성
+CREATE DATABASE mve_resource_db;
+
+# 데이터베이스 연결
+\c mve_resource_db
+
+# 테이블 생성
+\i init.sql
 ```
+
+**⚠️ 중요**:
+- `init.sql`은 **신규 설치 전용**입니다. 기존 테이블이 있으면 건너뜁니다.
+- 프로덕션 환경에서 기능을 추가할 때는 **마이그레이션 스크립트**를 사용하세요.
 
 **생성되는 테이블:**
 - `audio_files` - 공용 음원 파일 정보 (모든 유저 접근 가능)
 - `user_models` - 개인 3D 모델 파일 경로 (유저별 개인 소유)
+- `accessory_presets` - 액세서리 프리셋 (유저별 개인 소유)
 
 ---
 
@@ -241,6 +287,13 @@ node server.js
 ```
 
 서버가 `http://localhost:3001`에서 실행됩니다.
+
+**사용 가능한 NPM 스크립트:**
+```bash
+npm start       # 서버 실행
+npm run dev     # 개발 모드 (nodemon, 파일 변경 시 자동 재시작)
+npm run docs    # API 문서 (OpenAPI 스펙) 자동 생성
+```
 
 ### 프로덕션 환경 (PM2 사용)
 
@@ -257,6 +310,9 @@ pm2 save
 
 # 서버 상태 확인
 pm2 status
+
+# 로그 확인
+pm2 logs mve-resource-server
 ```
 
 ### Nginx 리버스 프록시 설정
@@ -334,6 +390,35 @@ EC2 인스턴스의 인바운드 규칙 예시:
 ---
 
 ## API 엔드포인트
+
+### 헬스 체크
+```
+GET /health/resource
+```
+
+**응답 (200 OK):**
+```json
+{
+  "success": true,
+  "code": "HEALTH_CHECK_OK",
+  "message": "Resource server is healthy",
+  "server": "mve-resource-server",
+  "redis": "connected",
+  "timestamp": "2024-01-01T00:00:00.000Z"
+}
+```
+
+**응답 (503 Service Unavailable - Redis 연결 실패):**
+```json
+{
+  "success": false,
+  "code": "REDIS_UNAVAILABLE",
+  "message": "Redis connection failed",
+  "server": "mve-resource-server",
+  "redis": "disconnected",
+  "timestamp": "2024-01-01T00:00:00.000Z"
+}
+```
 
 ### 음원 API (공용 - JWT 인증 필요)
 
@@ -694,19 +779,39 @@ $newModel.model | Format-List
 
 ```
 mve-resource-server/
-├── server.js           # Express 서버 설정
-├── db.js               # PostgreSQL 연결 풀
-├── .env                # 환경 변수
-├── .env.example        # 환경 변수 예제
-├── init.sql            # 리소스 테이블 초기화 SQL
+├── server.js                          # Express 서버 설정
+├── db.js                              # PostgreSQL 연결 풀
+├── redis-client.js                    # Redis 클라이언트 설정
+├── .env                               # 환경 변수
+├── .env.example                       # 환경 변수 예제
+├── init.sql                           # 리소스 테이블 초기화 SQL
 ├── middleware/
-│   └── auth.js         # JWT 토큰 검증 미들웨어
+│   ├── auth.js                        # JWT 토큰 검증 미들웨어
+│   └── upload.js                      # 파일 업로드 미들웨어 (S3/로컬 분기)
 ├── routes/
-│   ├── audio.js        # 음원 관련 라우트 (공용)
-│   └── models.js       # 모델 관련 라우트 (개인, JWT 필요)
-├── package.json        # 의존성 관리
-├── .gitignore          # Git 제외 파일
-└── README.md           # 프로젝트 문서
+│   ├── audio.js                       # 음원 관련 라우트 (공용, JWT 필요)
+│   ├── models.js                      # 모델 관련 라우트 (개인, JWT 필요, AI 생성)
+│   ├── concert.js                     # 콘서트 관련 라우트 (JWT 필요)
+│   └── accessory-presets.js           # 액세서리 프리셋 라우트 (JWT 필요)
+├── services/
+│   ├── concert-service.js             # 콘서트 비즈니스 로직 (Redis 세션 관리)
+│   └── accessory-preset-service.js    # 액세서리 프리셋 비즈니스 로직
+├── schemas/
+│   └── api-schemas.js                 # OpenAPI Component Schema 정의 (단일 소스)
+├── working-scripts/
+│   ├── generate-api-specs.js          # API 문서 자동 생성 스크립트
+│   └── outputs/
+│       └── resource-server-api-spec.json  # 생성된 OpenAPI 3.0 스펙 (Git 추적)
+├── public/
+│   └── api_test.html                  # API 테스트 웹 UI
+├── docs/
+│   ├── API_RESPONSES.md               # API 응답 형식 및 오류 코드
+│   ├── API_TEST.md                    # API 테스트 가이드
+│   ├── ENV_SETUP.md                   # 환경 변수 설정
+│   └── AWS_S3_SETUP.md                # AWS S3 설정
+├── package.json                       # 의존성 관리
+├── .gitignore                         # Git 제외 파일
+└── README.md                          # 프로젝트 문서
 ```
 
 ---
@@ -718,7 +823,7 @@ mve-resource-server/
 - **Express** v5.1.0 - 웹 애플리케이션 프레임워크
 
 **데이터베이스 & 캐시**
-- **PostgreSQL** - 관계형 데이터베이스 (login-server와 공유, 리소스 메타데이터 저장)
+- **PostgreSQL** - 관계형 데이터베이스 (리소스 메타데이터 저장)
 - **pg** v8.16.3 - PostgreSQL 클라이언트 라이브러리
 - **Redis** v4.7.0 - 인메모리 캐시 (콘서트 세션 관리, AI 작업 큐)
 
@@ -744,15 +849,71 @@ mve-resource-server/
 **개발 도구**
 - **nodemon** v3.0.1 - 파일 변경 시 자동 재시작 (개발 환경)
 
-**API 문서화** (루트 프로젝트)
-- **swagger-jsdoc** v6.2.8 - JSDoc 주석에서 OpenAPI 스펙 생성
-- **swagger-ui-express** v5.0.1 - Swagger UI 제공
+**API 문서화**
+- **swagger-jsdoc** - JSDoc 주석에서 OpenAPI 3.0 스펙 자동 생성
+  - `schemas/api-schemas.js`: Component Schema 정의 (단일 소스)
+  - `routes/*.js`: Swagger 주석으로 Response Schema 인라인 정의
+  - `working-scripts/generate-api-specs.js`: OpenAPI 스펙 생성 스크립트
 
 **인프라 (프로덕션)**
 - **PM2** - Node.js 프로세스 관리자
 - **Nginx** - 리버스 프록시
 - **AWS EC2** - 서버 호스팅 (Ubuntu)
 - **AWS S3** - 클라우드 파일 스토리지 (음원, 3D 모델)
+
+---
+
+## API 문서 자동 생성
+
+이 프로젝트는 코드 주석에서 OpenAPI 3.0 스펙을 자동 생성합니다.
+
+### 문서 생성 워크플로우
+
+```bash
+# 1. API 문서 생성 (OpenAPI 3.0 스펙)
+npm run docs
+
+# 생성 위치: working-scripts/outputs/resource-server-api-spec.json
+```
+
+### 설계 원칙 (CLAUDE.md 참조)
+
+**Component Schema (재사용 가능한 타입)**
+- 정의 위치: `schemas/api-schemas.js` (단일 소스)
+- Unreal Engine 구조체와 매칭됨
+- **현재 정의된 스키마 (12개):**
+  - `BaseResponse`, `ErrorResponse` - 공통 응답 타입
+  - `Vector3D`, `Rotator` - 기하학적 데이터
+  - `AudioFile` - 음원 파일 정보
+  - `ModelInfo`, `AIJobStatus`, `DeletedModelInfo` - 모델 관련
+  - `Accessory`, `AccessoryPreset` - 액세서리 관련
+  - `ConcertSong`, `ListenServer`, `ConcertInfo` - 콘서트 관련
+
+**Response Schema (엔드포인트별 응답)**
+- 정의 위치: `routes/*.js` (Swagger 주석 인라인)
+- Component Schema를 `$ref`로 참조
+- 공통 필드 (`success`, `code`, `message`) + 추가 필드 구조
+
+### API 추가 시 체크리스트
+
+1. 새로운 재사용 타입이 필요한가? → `schemas/api-schemas.js`에 추가
+2. `routes/*.js`에 Swagger 주석 작성 (requestBody, responses)
+3. `npm run docs` 실행하여 OpenAPI 스펙 생성
+4. 생성된 `resource-server-api-spec.json`을 [Swagger Editor](https://editor.swagger.io/)에서 확인
+5. Git 커밋에 `working-scripts/outputs/resource-server-api-spec.json` 포함
+
+### Unreal Engine 연동 검증
+
+프로젝트 루트에서 Python 검증 스크립트 실행:
+```bash
+python unreal/unreal-rider-python-validation-tool.example
+```
+
+**검증 항목:**
+- API 스펙의 모든 엔드포인트가 C++ 구조체로 정의되었는지 확인
+- Component Schema가 모두 USTRUCT로 존재하는지 확인
+- Required 필드가 모두 UPROPERTY로 정의되었는지 확인
+- MVE_API_RESPONSE_BASE 매크로 필드 자동 인식
 
 ---
 
@@ -779,21 +940,60 @@ ffmpeg -i input.wav -c:a aac -b:a 192k output.m4a
 
 ## 보안 고려사항
 
-1. **음원 파일**: 공용 리소스이지만 JWT 인증 필요 (로그인한 유저만 접근 가능)
-2. **모델 파일**: 개인 소유, JWT 검증 + 소유권 확인 (자신의 모델만 접근)
-3. **S3 Presigned URL**: 서명 포함 + 1시간 만료 (URL 공유되어도 만료 후 접근 불가)
-4. **SQL Injection 방지**: Prepared Statements 사용
-5. **JWT_SECRET 공유**: login-server와 동일한 키 사용 필수
-6. **파일 업로드 검증**: MIME 타입 + 확장자 검사, 100MB 크기 제한
+1. **환경 변수 보호**
+   - `.env` 파일을 `.gitignore`에 추가
+   - 비밀 키를 절대 커밋하지 않음
+
+2. **강력한 JWT Secret**
+   - 최소 32자 이상의 랜덤 문자열 사용
+   - **login-server와 반드시 동일한 키 사용**
+   - 정기적으로 교체
+
+3. **HTTPS 사용 (프로덕션)**
+   - 도메인 구입 및 SSL 인증서 설정
+   - nginx를 사용한 리버스 프록시 구성
+
+4. **리소스 접근 제어**
+   - **음원 파일**: 공용 리소스이지만 JWT 인증 필요 (로그인한 유저만 접근 가능)
+   - **모델 파일**: 개인 소유, JWT 검증 + 소유권 확인 (자신의 모델만 접근)
+   - **콘서트 세션**: JWT 검증 + 역할 기반 접근 제어 (스튜디오/관객)
+
+5. **파일 업로드 보안**
+   - MIME 타입 + 확장자 검사
+   - 100MB 크기 제한 (음원), 50MB (모델)
+   - 파일명 난수화 (충돌 방지)
+
+6. **S3 Presigned URL**
+   - 서명 포함 + 1시간 만료
+   - URL 공유되어도 만료 후 접근 불가
+
+7. **입력값 검증**
+   - 모든 입력값 타입 및 형식 검증
+   - SQL Injection 방지 (pg 라이브러리 Prepared Statements)
+
+8. **Redis 보안**
+   - 프로덕션 환경에서는 반드시 `requirepass` 설정으로 비밀번호 사용
+   - EC2에서 Redis 포트(6379)는 localhost에서만 접근 가능하도록 설정
+
+9. **포트 보안**
+   - 개발: 포트 3001 직접 접근
+   - 프로덕션: nginx(80/443)만 외부 노출, 포트 3001은 내부 전용
 
 ---
 
 ## 문서
 
+### 사용자 문서
 - **[API_RESPONSES.md](docs/API_RESPONSES.md)** - API 응답 형식 및 전체 오류 코드 목록
 - **[API_TEST.md](docs/API_TEST.md)** - 상세한 API 테스트 방법 및 예제
 - **[ENV_SETUP.md](docs/ENV_SETUP.md)** - 환경 변수 설정
 - **[AWS_S3_SETUP.md](docs/AWS_S3_SETUP.md)** - AWS S3 설정
+
+### 개발자 문서
+- **[CLAUDE.md](../CLAUDE.md)** - Claude AI 작업 가이드 (프로젝트 루트)
+  - API 추가/수정 프로세스
+  - Component Schema vs Response Schema 설계 원칙
+  - Unreal Engine 연동 검증 방법
 
 ---
 
